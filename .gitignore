@@ -1,0 +1,43 @@
+# --- Virtual Environment ---
+.venv/
+env/
+venv/
+.env
+
+# --- Python Bytecode & Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Builds & Packaging ---
+build/
+dist/
+wheels/
+*.egg-info/
+*.egg
+
+# --- Testing & Linting Caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Notebooks & IDEs ---
+.ipynb_checkpoints
+.virtual_documents
+.vscode/
+.idea/
+
+# --- OS Artifacts ---
+.DS_Store
+Thumbs.db
+
+# --- Archives ---
+*.zip
+*.tar.gz
+
+# --- Data & Outputs ---
+data/*.csv
+!data/*.csv.gz
+output/
