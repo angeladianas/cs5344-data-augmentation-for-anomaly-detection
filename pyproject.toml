@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cs5344-data-augmentation-for-anomaly-detection"
+version = "0.1.0"
+description = "CS5344 Group Project - Data Augmentation for Anomaly Detection"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "lightgbm>=4.0.0",
+    "matplotlib>=3.7.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "pyod>=2.0.0",
+    "pyyaml>=6.0",
+    "scikit-learn>=1.3.0",
+    "scipy>=1.10.0",
+    "seaborn>=0.12.0",
+    "torch>=2.0.0",
+    "tqdm>=4.66.0",
+]
+
+[tool.setuptools]
+packages = ["utils"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E4",
+    "E7",
+    "E9",
+    "F",
+    "I",
+    "UP",
+    "RUF",
+    "SIM",
+    "W",
+]
+ignore = [
+    "E501",  # Line length is handled by ruff format
+    "E402",  # Module level import not at top of file
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["utils"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.16.10",
+]
