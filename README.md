@@ -110,6 +110,36 @@ else:
 !ls -l uv.lock
 ```
 
+## Shared dataset preprocessing
+
+Both dataset notebooks in `notebook/preprocessing/` use the same pipeline:
+
+```python
+from utils.dataset_configs import NSL_KDD, UNSW_NB15
+from utils.preprocessing import run_preprocessing
+
+nsl = run_preprocessing("data/NSL-KDD/train.csv", NSL_KDD)
+unsw = run_preprocessing("data/UNSW-NB15/train.csv", UNSW_NB15)
+```
+
+Dataset configurations declare categorical, binary, discrete, integer, continuous,
+and bounded-rate features. The pipeline audits the data, creates duplicate-aware
+development/validation splits, fits generator rules on development normals, and
+exports GMM/TabDDPM inputs and an audit report. Boundary vocabularies use all
+development rows. UNSW service `-` is preserved; its packet `rate` is unbounded,
+and `is_ftp_login` preserves the released discrete states rather than forcing binary.
+
+Artifacts are saved separately under `output/nsl_kdd/` and `output/unsw_nb15/`,
+including CSV copies. Re-running overwrites the selected dataset's artifacts.
+Source-row IDs are provenance and must be excluded from training features.
+`TabularDecoder.from_directory(result["model_input_output"])` loads the matching
+decoder. Float32 inverse errors are measured with per-row precision bounds;
+check the reconstruction audit, especially for large TCP sequence values.
+Zero-indicator modelling remains a later experiment. This pipeline does not train
+generators or establish downstream detection performance.
+
+Run utility tests with `uv run pytest`.
+
 ## Disclaimer
 ---
 AI is used in generating docstring, enhancing the sentences, and other formatting. 
