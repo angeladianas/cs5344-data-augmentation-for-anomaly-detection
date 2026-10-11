@@ -34,6 +34,7 @@ link-mode = "copy"
 line-length = 100
 indent-width = 4
 target-version = "py310"
+exclude = ["tmp_notebook"]
 
 [tool.ruff.lint]
 select = [
