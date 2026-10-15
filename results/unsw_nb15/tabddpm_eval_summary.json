@@ -1,0 +1,11 @@
+{
+  "dataset": "unsw_nb15",
+  "epochs": 300,
+  "train_time_seconds": 143.11,
+  "sample_time_seconds": 40.55,
+  "synthetic_rows": 16000,
+  "S_val": 0.4335448776676304,
+  "AUPRC_ECOD": 0.4168725175661589,
+  "AUPRC_IForest_mean": 0.4502172377691019,
+  "duration_seconds": 34.04
+}
