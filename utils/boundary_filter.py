@@ -121,12 +121,11 @@ class LightGBMBoundaryFilter:
         if drop_cols:
             pdf = pdf.drop(columns=drop_cols)
 
+        known_cats = getattr(self, "known_categories", {})
         for col in self.cat_cols:
             if col in pdf.columns:
-                if col in self.known_categories:
-                    cat_type = pd.CategoricalDtype(
-                        categories=self.known_categories[col], ordered=False
-                    )
+                if col in known_cats:
+                    cat_type = pd.CategoricalDtype(categories=known_cats[col], ordered=False)
                     pdf[col] = pdf[col].astype(str).astype(cat_type)
                 else:
                     pdf[col] = pdf[col].astype(str).astype("category")
