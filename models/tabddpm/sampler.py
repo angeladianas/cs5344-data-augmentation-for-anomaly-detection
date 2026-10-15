@@ -32,8 +32,15 @@ def resolve_device(device: torch.device | str | None = None) -> torch.device:
     """
     if isinstance(device, torch.device):
         return device
-    if device is not None and device != "auto":
-        return torch.device(device)
+    if isinstance(device, str):
+        cleaned = device.strip().lower()
+        if cleaned in {"auto", ""}:
+            pass
+        elif cleaned in {"gpu", "cud"}:
+            return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            return torch.device(cleaned)
+
     if torch.cuda.is_available():
         return torch.device("cuda")
     if torch.backends.mps.is_available():
