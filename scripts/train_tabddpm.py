@@ -118,7 +118,16 @@ def train_and_evaluate(
     # 1. Load preprocessed model inputs
     input_path = f"output/{dataset_name}/model_inputs/tabddpm_inputs.npz"
     if not os.path.exists(input_path):
-        raise FileNotFoundError(f"Model inputs not found at {input_path}")
+        print(f"Preprocessed inputs not found at {input_path}. Running preprocessing pipeline...")
+        from utils.preprocessing import run_preprocessing
+
+        config, folder = (
+            (NSL_KDD, "NSL-KDD") if dataset_name == "nsl_kdd" else (UNSW_NB15, "UNSW-NB15")
+        )
+        csv_path = f"data/{folder}/train.csv"
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"Raw training data not found at {csv_path}")
+        run_preprocessing(csv_path, config, output_root="output", seed=seed)
 
     npz_data = np.load(input_path)
     x_num = npz_data["X_num"]
