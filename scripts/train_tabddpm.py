@@ -228,14 +228,17 @@ def train_and_evaluate(
         categorical_cols=categorical_cols,
     )
 
+    s_val = float(eval_results["S_val"])
+    auprc_ecod = float(eval_results["AUPRC_ECOD"])
+    auprc_iforest = float(eval_results["AUPRC_IForest_mean"])
+    eval_duration = float(eval_results["duration_seconds"])
+
     print(f"\n{'=' * 70}")
     print(f"RESULTS FOR {dataset_name.upper()} (TabDDPM Alone):")
-    print(f"  Composite Score S_val: {eval_results['composite_score']:.5f}")
-    print(f"  AUPRC (ECOD):          {eval_results['auprc_ecod']:.5f}")
-    print(
-        f"  AUPRC (IForest):       {eval_results['auprc_iforest_mean']:.5f} (std: {eval_results['auprc_iforest_std']:.5f})"
-    )
-    print(f"  Evaluation Time:       {eval_results['duration_seconds']:.1f}s")
+    print(f"  Composite Score S_val: {s_val:.5f}")
+    print(f"  AUPRC (ECOD):          {auprc_ecod:.5f}")
+    print(f"  AUPRC (IForest):       {auprc_iforest:.5f}")
+    print(f"  Evaluation Time:       {eval_duration:.1f}s")
     print(f"{'=' * 70}\n")
 
     summary: dict[str, object] = {
@@ -244,10 +247,10 @@ def train_and_evaluate(
         "train_time_seconds": round(train_time, 2),
         "sample_time_seconds": round(sample_time, 2),
         "synthetic_rows": num_samples,
-        "composite_score": eval_results["composite_score"],
-        "auprc_ecod": eval_results["auprc_ecod"],
-        "auprc_iforest_mean": eval_results["auprc_iforest_mean"],
-        "auprc_iforest_std": eval_results["auprc_iforest_std"],
+        "S_val": s_val,
+        "AUPRC_ECOD": auprc_ecod,
+        "AUPRC_IForest_mean": auprc_iforest,
+        "duration_seconds": eval_duration,
     }
 
     results_dir = f"results/{dataset_name}"
