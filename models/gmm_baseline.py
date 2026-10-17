@@ -4,10 +4,12 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 from sklearn.mixture import GaussianMixture
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GMM_INPUTS = REPO_ROOT / "output" / "nsl_kdd" / "model_inputs" / "gmm_inputs.csv"
+DEFAULT_CANDIDATE_COMPONENTS = (2, 5, 8, 10, 15, 20, 25, 30, 40, 50, 75, 100, 125, 150)
 
 
 def load_gmm_inputs(path: str | Path = DEFAULT_GMM_INPUTS) -> pd.DataFrame:
@@ -29,7 +31,7 @@ def gmm_feature_columns(frame: pd.DataFrame) -> list[str]:
 def fit_gmm_baseline(
     frame: pd.DataFrame,
     *,
-    candidate_components: tuple[int, ...] = (2, 5, 8, 10, 15),
+    candidate_components: tuple[int, ...] = DEFAULT_CANDIDATE_COMPONENTS,
     random_state: int = 42,
 ):
     """Fit a GMM across candidate component counts and keep the best BIC model."""
@@ -41,8 +43,9 @@ def fit_gmm_baseline(
     best_model = None
     best_score = None
     best_info = None
+    criteria = []
 
-    for n_components in candidate_components:
+    for n_components in sorted(set(candidate_components)):
         if n_components >= X.shape[0]:
             continue
         model = GaussianMixture(
@@ -53,10 +56,24 @@ def fit_gmm_baseline(
         )
         model.fit(X)
         bic = model.bic(X)
+        aic = model.aic(X)
+        criteria.append(
+            {
+                "n_components": n_components,
+                "bic": float(bic),
+                "aic": float(aic),
+                "converged": bool(model.converged_),
+                "n_iter": int(model.n_iter_),
+            }
+        )
+        if not model.converged_:
+            continue
         info = {
             "n_components": n_components,
             "bic": float(bic),
-            "aic": float(model.aic(X)),
+            "aic": float(aic),
+            "converged": bool(model.converged_),
+            "n_iter": int(model.n_iter_),
             "weights": model.weights_.copy(),
             "means": model.means_.copy(),
             "covariances": model.covariances_.copy(),
@@ -67,16 +84,34 @@ def fit_gmm_baseline(
             best_info = info
 
     if best_model is None:
-        raise ValueError("No valid GMM component setting was evaluated.")
+        raise ValueError("No candidate GMM converged; inspect the input and fit settings.")
 
-    return best_model, {"features": feature_columns, **best_info}
+    return best_model, {"features": feature_columns, "criteria": criteria, **best_info}
+
+
+def plot_gmm_information_criteria(criteria: list[dict[str, int | float]]) -> None:
+    """Plot the fitted models' BIC and AIC scores by component count."""
+    component_counts = [result["n_components"] for result in criteria]
+    bic_scores = [result["bic"] for result in criteria]
+    aic_scores = [result["aic"] for result in criteria]
+
+    _, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(component_counts, bic_scores, marker="o", label="BIC")
+    ax.plot(component_counts, aic_scores, marker="o", label="AIC")
+    ax.set_xlabel("Number of components")
+    ax.set_ylabel("Information criterion score")
+    ax.set_title("GMM model selection")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
 
 
 def sample_gmm(
     frame: pd.DataFrame,
     *,
     n_samples: int = 1000,
-    candidate_components: tuple[int, ...] = (2, 5, 8, 10, 15, 20, 25, 30, 40, 50),
+    candidate_components: tuple[int, ...] = DEFAULT_CANDIDATE_COMPONENTS,
     random_state: int = 42,
 ) -> tuple[pd.DataFrame, GaussianMixture, dict]:
     """Fit the GMM and generate synthetic normal samples with the same schema."""
@@ -99,6 +134,16 @@ if __name__ == "__main__":
 
     sampled, model, info = sample_gmm(df, n_samples=5000)
     print(f"\nBest GMM: {info['n_components']} components")
+    print(f"Converged: {info['converged']} in {info['n_iter']} iterations")
     print(f"BIC: {info['bic']:.3f}")
     print(f"AIC: {info['aic']:.3f}")
+    print("\nCandidate fits:")
+    for result in info["criteria"]:
+        print(
+            f"K={result['n_components']:>3}: "
+            f"converged={result['converged']}, "
+            f"iterations={result['n_iter']}, "
+            f"BIC={result['bic']:.3f}"
+        )
+    plot_gmm_information_criteria(info["criteria"])
     print(sampled.head())
