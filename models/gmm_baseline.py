@@ -50,8 +50,8 @@ def fit_gmm_baseline(
             continue
         model = GaussianMixture(
             n_components=n_components,
-            covariance_type="diag",
-            n_init=1,
+            covariance_type="full",
+            n_init=3,
             random_state=random_state,
         )
         model.fit(X)
