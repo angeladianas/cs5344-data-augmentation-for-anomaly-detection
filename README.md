@@ -138,6 +138,54 @@ check the reconstruction audit, especially for large TCP sequence values.
 Zero-indicator modelling remains a later experiment. This pipeline does not train
 generators or establish downstream detection performance.
 
+Generate the GMM share of the proposal's oversampled candidate pool with:
+
+```bash
+uv run python -m models.gmm_candidates_v1  # original ungrouped model
+uv run python -m models.gmm_candidates_v2  # protocol-grouped models
+```
+
+V1 and V2 outputs are kept separately under each dataset's
+`gmm_candidates_v1/` and `gmm_candidates_v2/` directories.
+
+This fits separate best-converged-by-BIC GMMs on development-normal protocol
+groups: TCP and non-TCP for NSL-KDD, and TCP, UDP, and other protocols for
+UNSW-NB15. Each group generates its share of the 50,000 NSL-KDD or 60,000
+UNSW-NB15 candidates, proportionally to its share of development-normal rows;
+the group samples are recombined before post-processing. The selected
+group-specific models and per-row group/component assignments are saved. It
+also applies the saved LightGBM
+boundary filter from `results/models/` with the default rejection threshold
+`0.10`, retaining the original pool and writing accepted rows to
+`filtered_samples.csv` and `filtered_samples.parquet`. Per-candidate anomaly
+scores are saved to `boundary_filter_scores.csv`. NSL-KDD `src_bytes`,
+`dst_bytes`, `dst_host_count`, and `dst_host_srv_count` are rank-mapped to
+their development-normal empirical marginals before inverse transformation,
+preserving observed tails and zero frequencies. Every numerical output column
+is also rounded to the maximum meaningful decimal precision found in the
+original training CSV; the per-column precision is recorded in metadata. Set
+`--tau-reject` to change the boundary-filter threshold. These are still only
+GMM candidates, not final submissions: the proposal combines them with
+TabDDPM candidates and selects the required final row count. For NSL-KDD,
+`num_compromised` and `num_root` are resampled jointly from development-normal
+rows matching each candidate's protocol, service, flag, and login context;
+sampling falls back to same-protocol rows and then all development normals.
+For UNSW-NB15, the TCP window and sequence fields (`swin`, `stcpb`, `dtcpb`,
+and `dwin`) are set to zero for non-TCP records. Generated `tcprtt` is derived
+from `synack + ackdat` and bounded to 3.5 seconds; when the sum exceeds the
+bound, both components are scaled proportionally to preserve the timing
+identity. `response_body_len` is rank-calibrated separately for HTTP traffic
+(the `http` service or a positive HTTP-method count) and non-HTTP traffic to
+match development-normal tails. `ct_state_ttl` is reconstructed from
+development-normal values to match its zero frequency within each
+`(proto, state)` context, with protocol and global fallbacks for unseen
+contexts. Generated `smean` and `dmean` are derived from bytes per packet and
+rounded to the source's integer representation; byte/packet consistency is
+checked against the resulting half-packet rounding tolerance. If a generated
+packet count is zero, the corresponding byte count is set to zero and the
+derived mean is zero; the number of such byte-count repairs is recorded in
+metadata.
+
 Run utility tests with `uv run pytest`.
 
 ## Disclaimer
