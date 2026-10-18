@@ -1,0 +1,11 @@
+{
+  "dataset": "nsl_kdd",
+  "epochs": 250,
+  "train_time_seconds": 241.59,
+  "sample_time_seconds": 53.37,
+  "synthetic_rows": 16000,
+  "S_val": 0.949126608294781,
+  "AUPRC_ECOD": 0.9298683061083892,
+  "AUPRC_IForest_mean": 0.9683849104811728,
+  "duration_seconds": 30.98
+}
