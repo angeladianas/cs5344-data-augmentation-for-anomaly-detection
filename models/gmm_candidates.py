@@ -24,7 +24,7 @@ from utils.dataset_configs import NSL_KDD, UNSW_NB15
 from utils.decoding import TabularDecoder
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-GMM_POOL_SIZES = {"nsl_kdd": 50_000, "unsw_nb15": 60_000}
+GMM_POOL_SIZES = {"nsl_kdd": 50_000, "unsw_nb15": 100_000}
 DATASET_CONFIGS = {"nsl_kdd": NSL_KDD, "unsw_nb15": UNSW_NB15}
 BOUNDARY_FILTER_DIR = REPO_ROOT / "results" / "models"
 DEFAULT_REJECTION_THRESHOLD = 0.10

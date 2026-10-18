@@ -9,7 +9,7 @@ from sklearn.mixture import GaussianMixture
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GMM_INPUTS = REPO_ROOT / "output" / "unsw_nb15" / "model_inputs" / "gmm_inputs.csv"
-DEFAULT_CANDIDATE_COMPONENTS = (2,5,10,15,20,25,30,35,40,45,50, 100, 150, 200)
+DEFAULT_CANDIDATE_COMPONENTS = (2,5,10,15,20,25,30,35,40,45,50, 100, 150, 200, 250)
 
 
 def load_gmm_inputs(path: str | Path = DEFAULT_GMM_INPUTS) -> pd.DataFrame:
@@ -50,8 +50,8 @@ def fit_gmm_baseline(
             continue
         model = GaussianMixture(
             n_components=n_components,
-            covariance_type="diag",
-            n_init=1,
+            covariance_type="full",
+            n_init=3,
             random_state=random_state,
         )
         model.fit(X)
