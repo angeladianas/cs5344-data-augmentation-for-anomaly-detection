@@ -1,4 +1,27 @@
-# cs5344-data-augmentation-for-anomaly-detection
+# CS5344: Tabular Data Augmentation for Anomaly Detection (Group 39)
+
+## 🚀 Reproducing Competition Submissions (Grading & Evaluation)
+
+This repository provides an automated, unified pipeline to reproduce the exact Kaggle competition submissions for both **NSL-KDD** ($N = 40,000$) and **UNSW-NB15** ($N = 70,000$).
+
+### 1. One-Command Master Pipeline Execution
+To execute the end-to-end pipeline directly from our trained models (**65% Deep TabDDPM + 35% Protocol-Grouped GMM V2 + LightGBM Negative Boundary Filtering + RFC Physics Cleaning**):
+```bash
+python run_pipeline.py
+```
+This generates candidates directly from the trained TabDDPM checkpoints (`results/models/{dataset}/tabddpm_best.pt`) and Protocol-Grouped GMM V2 models, filters them via LightGBM boundary critics (`results/models/boundary_filter_{dataset}.pkl`), enforces network physics invariants, and exports:
+- `submissions/submission_nsl_kdd.csv` (40,000 rows, 42 cols, 0 nulls, Kaggle Public: **0.93113**)
+- `submissions/submission_unsw_nb15.csv` (70,000 rows, 43 cols, 0 nulls, Kaggle Public: **0.60013**)
+
+### 2. Interactive Step-by-Step Walkthrough Notebook
+For an interactive, cell-by-cell walkthrough with visualizations, mathematical justifications, ratio sweeps, and boundary filtering curves, open:
+- [`notebook/step_5_ensemble.ipynb`](notebook/step_5_ensemble.ipynb)
+
+### 3. Submission History & Experiment Tracker
+A complete version-by-version log of candidate sources, filtering parameters, local validation scores ($S_{\text{val}}$), and official Kaggle public scores is maintained in:
+- [`submissions/EXPERIMENT_TRACKER.md`](submissions/EXPERIMENT_TRACKER.md)
+
+---
 
 ## Development Guide
 Setup guidelines to ensure that we have the same environment and code linting.
