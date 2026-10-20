@@ -1,6 +1,6 @@
 # CS5344: Tabular Data Augmentation for Anomaly Detection (Group 39)
 
-## 🚀 Reproducing Competition Submissions (Grading & Evaluation)
+## Reproducing Competition Submissions (Grading & Evaluation)
 
 This repository provides an automated, unified pipeline to reproduce the exact Kaggle competition submissions for both **NSL-KDD** ($N = 40,000$) and **UNSW-NB15** ($N = 70,000$).
 
