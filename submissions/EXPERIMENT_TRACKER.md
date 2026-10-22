@@ -16,7 +16,9 @@
 | 10 | 70% TabDDPM + 30% Grouped GMM V2 | $\le 0.05$ | 0.60416 | - | - | 0.56895 |
 | 11 | 70% Pre-Filtered TabDDPM + 30% Grouped GMM V2 | $\le 0.05$ | - | - | - | 0.53646 |
 | 12 | 50% TabDDPM + 50% Ungrouped GMM V1 | $\le 0.02$ | - | - | - | 0.53122 |
-| 13 | 100% TabDDPM | $\le 0.05$ | - | - | - | 0.48217 |
+| 13 (Ablation) | 100% Grouped GMM V2 Alone | $\le 0.05$ | 0.57460 | 0.55440 | 0.59480 | 0.52068 |
+| 14 (Ablation) | 100% Deep TabDDPM Alone | $\le 0.05$ | 0.43598 | 0.36767 | 0.50430 | 0.33843 |
+| 15 (Legacy) | 100% Early TabDDPM (Unfiltered Pool) | $\le 0.05$ | - | - | - | 0.48217 |
 
 ## NSL-KDD ($N = 40,000$)
 
@@ -31,7 +33,9 @@
 | 7 | 80% Deep TabDDPM + 20% Grouped GMM V2 | $\le 0.04$ | 0.95570 | 0.94164 | 0.96976 | 0.93083 |
 | 8 | 75% TabDDPM + 25% Grouped GMM V2 (50k Pool) | $\le 0.04$ | - | - | - | 0.93072 |
 | 9 | 70% TabDDPM + 30% Ungrouped GMM V1 | $\le 0.05$ | - | - | - | 0.93050 |
-| 10 | 70% TabDDPM + 30% Grouped GMM V2 (52k Pool) | $\le 0.05$ | 0.95222 | 0.93532 | 0.96913 | 0.93029 |
+| 10 (Ablation) | 100% Deep TabDDPM Alone | $\le 0.04$ | 0.95691 | 0.94536 | 0.96845 | 0.93043 |
+| 11 | 70% TabDDPM + 30% Grouped GMM V2 (52k Pool) | $\le 0.05$ | 0.95222 | 0.93532 | 0.96913 | 0.93029 |
+| 12 (Ablation) | 100% Grouped GMM V2 Alone | $\le 0.04$ | 0.95043 | 0.92972 | 0.97113 | 0.92944 |
 
 ## Recipe Terminology
 
