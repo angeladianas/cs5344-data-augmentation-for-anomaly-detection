@@ -93,10 +93,8 @@ cs5344-data-augmentation-for-anomaly-detection/
 │   ├── boundary_filter.py          # Supervised LightGBM boundary filter
 │   └── evaluator.py                # Kaggle-equivalent benchmark (ECOD + 10-seed IForest)
 │
-├── scripts/                        # Pipelines and build utilities
-│   ├── export_competition_submissions.py # Direct ensemble generation script wrapper
-│   ├── build_ensemble_notebook.py  # Builder script for step_5_ensemble.ipynb
-│   └── train_tabddpm.py            # TabDDPM training entry point
+├── scripts/                        # Pipelines and training utilities
+│   └── train_tabddpm.py            # GPU training entry point for TabDDPM models
 │
 ├── submissions/                    # Official submission outputs and records
 │   ├── submission_nsl_kdd.csv      # NSL-KDD submission (40,000 rows, 42 columns)

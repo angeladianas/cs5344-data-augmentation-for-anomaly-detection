@@ -915,12 +915,15 @@ def generate_gmm_candidate_pool(
     }
 
 
-def main(*, generation_version: str = "v1") -> None:
+def main(*, generation_version: str | None = None) -> None:
     """Run the selected generation version for the requested datasets."""
-    if generation_version not in {"v1", "v2"}:
-        raise ValueError(f"Unknown GMM generation version: {generation_version}")
-
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--version",
+        choices=["v1", "v2"],
+        default=generation_version or "v2",
+        help="GMM generation version: 'v1' (ungrouped) or 'v2' (protocol-grouped, default: v2).",
+    )
     parser.add_argument(
         "--datasets",
         nargs="+",
@@ -935,13 +938,14 @@ def main(*, generation_version: str = "v1") -> None:
         help="Reject candidates with predicted anomaly probability above this threshold.",
     )
     args = parser.parse_args()
+    chosen_version = args.version or generation_version or "v2"
 
     for dataset in args.datasets:
         result = generate_gmm_candidate_pool(
             dataset,
             random_state=args.random_state,
             tau_reject=args.tau_reject,
-            generation_version=generation_version,
+            generation_version=chosen_version,
         )
         metadata = result["metadata"]
         group_summaries = ", ".join(
