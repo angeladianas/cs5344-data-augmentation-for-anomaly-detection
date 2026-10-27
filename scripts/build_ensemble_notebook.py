@@ -522,7 +522,4 @@ nb = {
 (REPO_ROOT / "notebook/step_5_ensemble.ipynb").write_text(
     json.dumps(nb, indent=1), encoding="utf-8"
 )
-(REPO_ROOT / "notebook/models/step_5_ensemble.ipynb").write_text(
-    json.dumps(nb, indent=1), encoding="utf-8"
-)
-print("Updated step_5_ensemble.ipynb across notebook directories.")
+print("Updated notebook/step_5_ensemble.ipynb successfully.")
