@@ -28,22 +28,22 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from utils.boundary_filter import LightGBMBoundaryFilter
-from utils.dataset_configs import NSL_KDD, UNSW_NB15
-from utils.decoding import TabularDecoder
+from models.gmm_baseline import fit_gmm_baseline
+from models.gmm_candidates import (
+    allocate_group_sample_counts,
+    generation_group_masks,
+    infer_source_decimal_precision,
+    sample_component_conditional_donors,
+)
 from models.tabddpm import (
-    TabDDPMModel,
     GaussianMultinomialDiffusion,
+    TabDDPMModel,
     TabDDPMSampler,
     resolve_device,
 )
-from models.gmm_baseline import fit_gmm_baseline
-from models.gmm_candidates import (
-    generation_group_masks,
-    allocate_group_sample_counts,
-    sample_component_conditional_donors,
-    infer_source_decimal_precision,
-)
+from utils.boundary_filter import LightGBMBoundaryFilter
+from utils.dataset_configs import NSL_KDD, UNSW_NB15
+from utils.decoding import TabularDecoder
 
 device = resolve_device("auto")
 
@@ -70,9 +70,7 @@ def enforce_domain_invariants(
     if dataset_name == "unsw_nb15":
         if "proto" in result.columns:
             non_tcp = pl.col("proto").str.to_lowercase() != "tcp"
-            tcp_fields = [
-                f for f in ["swin", "stcpb", "dtcpb", "dwin"] if f in result.columns
-            ]
+            tcp_fields = [f for f in ["swin", "stcpb", "dtcpb", "dwin"] if f in result.columns]
             if tcp_fields:
                 result = result.with_columns(
                     [
@@ -128,7 +126,9 @@ def enforce_domain_invariants(
     return result
 
 
-def load_tabddpm_sampler(dataset_name: str, compute_device: torch.device = device) -> TabDDPMSampler:
+def load_tabddpm_sampler(
+    dataset_name: str, compute_device: torch.device = device
+) -> TabDDPMSampler:
     """Load the trained TabDDPM checkpoint and return a configured TabDDPMSampler."""
     ckpt_path = REPO_ROOT / f"results/models/{dataset_name}/tabddpm_best.pt"
     if not ckpt_path.exists():
@@ -168,7 +168,9 @@ def sample_tabddpm_candidates(
     if n_samples <= 0:
         return pl.DataFrame()
 
-    print(f"Sampling {n_samples:,} candidates directly from trained TabDDPM model ({dataset_name.upper()}, device={device})...")
+    print(
+        f"Sampling {n_samples:,} candidates directly from trained TabDDPM model ({dataset_name.upper()}, device={device})..."
+    )
     t0 = time.time()
     sampler = load_tabddpm_sampler(dataset_name, compute_device=device)
     df = sampler.sample_to_dataframe(
@@ -192,7 +194,9 @@ def fit_and_sample_gmm(
     if n_samples <= 0:
         return pl.DataFrame()
 
-    print(f"Fitting and sampling {n_samples:,} candidates directly from Protocol-Grouped GMM {gmm_version.upper()} ({dataset_name.upper()})...")
+    print(
+        f"Fitting and sampling {n_samples:,} candidates directly from Protocol-Grouped GMM {gmm_version.upper()} ({dataset_name.upper()})..."
+    )
     t0 = time.time()
     input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
     numerical_df = pd.read_csv(input_dir / "gmm_inputs.csv")
@@ -235,7 +239,9 @@ def fit_and_sample_gmm(
         generated_frames.append(group_decoded)
 
     df = pl.concat(generated_frames, how="vertical")
-    print(f"Protocol-Grouped GMM {gmm_version.upper()} generated {df.height:,} rows in {time.time() - t0:.1f}s.")
+    print(
+        f"Protocol-Grouped GMM {gmm_version.upper()} generated {df.height:,} rows in {time.time() - t0:.1f}s."
+    )
     return df
 
 
@@ -249,7 +255,9 @@ def load_tabddpm_candidates(
     """Generate TabDDPM candidates directly from the trained TabDDPM model."""
     if decoder is None:
         decoder = TabularDecoder.from_directory(REPO_ROOT / f"output/{dataset_name}/model_inputs")
-    target = n_samples if n_samples is not None else (50000 if dataset_name == "nsl_kdd" else 100000)
+    target = (
+        n_samples if n_samples is not None else (50000 if dataset_name == "nsl_kdd" else 100000)
+    )
     return sample_tabddpm_candidates(dataset_name, n_samples=target, decoder=decoder, seed=seed)
 
 
@@ -264,7 +272,9 @@ def load_gmm_candidates(
     if decoder is None:
         decoder = TabularDecoder.from_directory(REPO_ROOT / f"output/{dataset_name}/model_inputs")
     target = n_samples if n_samples is not None else (25000 if dataset_name == "nsl_kdd" else 40000)
-    return fit_and_sample_gmm(dataset_name, decoder=decoder, n_samples=target, gmm_version=gmm_version, seed=seed)
+    return fit_and_sample_gmm(
+        dataset_name, decoder=decoder, n_samples=target, gmm_version=gmm_version, seed=seed
+    )
 
 
 def export_competition_submission(
@@ -279,25 +289,31 @@ def export_competition_submission(
     if tau_reject is None:
         tau_reject = 0.04 if dataset_name == "nsl_kdd" else 0.05
 
-    n_tab_target = int(round(alpha * target_n))
+    n_tab_target = round(alpha * target_n)
     n_gmm_target = target_n - n_tab_target
 
     # Candidate pool headroom so both generators have ample survivors under tau_reject
     tab_headroom = 1.6 if dataset_name == "nsl_kdd" else 2.3
     gmm_headroom = 1.3 if dataset_name == "nsl_kdd" else 1.6
-    n_tab_pool = int(round(n_tab_target * tab_headroom))
-    n_gmm_pool = int(round(n_gmm_target * gmm_headroom))
+    n_tab_pool = round(n_tab_target * tab_headroom)
+    n_gmm_pool = round(n_gmm_target * gmm_headroom)
 
     print(f"\n{'=' * 75}")
     print(f"GENERATING SUBMISSION FROM MODELS: {dataset_name.upper()}")
-    print(f"Target Rows: {target_n:,} -> {int(alpha*100)}% TabDDPM ({n_tab_target:,}) + {int((1-alpha)*100)}% Grouped GMM {gmm_version.upper()} ({n_gmm_target:,})")
-    print(f"Candidate Pools: TabDDPM={n_tab_pool:,}, GMM={n_gmm_pool:,} | Boundary Filter: tau <= {tau_reject}")
+    print(
+        f"Target Rows: {target_n:,} -> {int(alpha * 100)}% TabDDPM ({n_tab_target:,}) + {int((1 - alpha) * 100)}% Grouped GMM {gmm_version.upper()} ({n_gmm_target:,})"
+    )
+    print(
+        f"Candidate Pools: TabDDPM={n_tab_pool:,}, GMM={n_gmm_pool:,} | Boundary Filter: tau <= {tau_reject}"
+    )
     print(f"{'=' * 75}\n")
 
     input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
     decoder = TabularDecoder.from_directory(input_dir)
     config = NSL_KDD if dataset_name == "nsl_kdd" else UNSW_NB15
-    train_csv = REPO_ROOT / f"data/{'NSL-KDD' if dataset_name == 'nsl_kdd' else 'UNSW-NB15'}/train.csv"
+    train_csv = (
+        REPO_ROOT / f"data/{'NSL-KDD' if dataset_name == 'nsl_kdd' else 'UNSW-NB15'}/train.csv"
+    )
 
     # 1. Load trained LightGBM boundary filter first
     filter_path = REPO_ROOT / f"results/models/boundary_filter_{dataset_name}.pkl"
@@ -306,8 +322,12 @@ def export_competition_submission(
         boundary_filter.model.set_params(n_jobs=1)
 
     # 2. Sample raw candidates directly from both models (TabDDPM + Grouped GMM V2)
-    df_tab = sample_tabddpm_candidates(dataset_name, n_samples=n_tab_pool, decoder=decoder, seed=seed)
-    df_gmm = fit_and_sample_gmm(dataset_name, decoder=decoder, n_samples=n_gmm_pool, gmm_version=gmm_version, seed=seed)
+    df_tab = sample_tabddpm_candidates(
+        dataset_name, n_samples=n_tab_pool, decoder=decoder, seed=seed
+    )
+    df_gmm = fit_and_sample_gmm(
+        dataset_name, decoder=decoder, n_samples=n_gmm_pool, gmm_version=gmm_version, seed=seed
+    )
 
     # 3. Score with LightGBM boundary filter and select exact 65:35 target split
     tab_probs = boundary_filter.predict_anomaly_prob(df_tab.to_pandas())
@@ -320,8 +340,12 @@ def export_competition_submission(
     tab_surv_p = tab_probs[tab_mask]
     gmm_surv_p = gmm_probs[gmm_mask]
 
-    print(f"TabDDPM survivors (tau <= {tau_reject}): {tab_surv.height:,} / {df_tab.height:,} ({tab_mask.mean()*100:.1f}%)")
-    print(f"GMM V2  survivors (tau <= {tau_reject}): {gmm_surv.height:,} / {df_gmm.height:,} ({gmm_mask.mean()*100:.1f}%)")
+    print(
+        f"TabDDPM survivors (tau <= {tau_reject}): {tab_surv.height:,} / {df_tab.height:,} ({tab_mask.mean() * 100:.1f}%)"
+    )
+    print(
+        f"GMM V2  survivors (tau <= {tau_reject}): {gmm_surv.height:,} / {df_gmm.height:,} ({gmm_mask.mean() * 100:.1f}%)"
+    )
 
     if dataset_name == "nsl_kdd":
         # Diversity-preserving sampling across surviving normal modes
@@ -349,7 +373,9 @@ def export_competition_submission(
         )
 
     combined = pl.concat([selected_tab, selected_gmm], how="vertical")
-    print(f"Assembled exact 65:35 ensemble ({selected_tab.height:,} TabDDPM + {selected_gmm.height:,} GMM V2 = {combined.height:,} rows).")
+    print(
+        f"Assembled exact 65:35 ensemble ({selected_tab.height:,} TabDDPM + {selected_gmm.height:,} GMM V2 = {combined.height:,} rows)."
+    )
 
     # 4. Enforce domain invariants and decimal precision
     cat_cols = list(config.categorical)
@@ -366,7 +392,9 @@ def export_competition_submission(
     assert submission.height == target_n, f"Expected {target_n} rows, got {submission.height}"
     assert "is_anomaly" not in submission.columns, "Found is_anomaly in submission!"
     assert submission.columns[0] == "id", "First column is not 'id'!"
-    assert submission.null_count().sum_horizontal().sum() == 0, "Null values detected in submission!"
+    assert submission.null_count().sum_horizontal().sum() == 0, (
+        "Null values detected in submission!"
+    )
 
     # Save directly to submissions folder
     root_dir = REPO_ROOT / "submissions"
@@ -374,14 +402,16 @@ def export_competition_submission(
     out_csv_root = root_dir / f"submission_{dataset_name}.csv"
 
     submission.write_csv(out_csv_root)
-    print(f"\n[PASSED] Saved and verified submission:")
+    print("\n[PASSED] Saved and verified submission:")
     print(f"         Path: {out_csv_root}")
     print(f"         Rows: {submission.height:,} | Cols: {len(submission.columns)} | Nulls: 0\n")
     return out_csv_root
 
 
 if __name__ == "__main__":
-    print("Exporting competition submissions directly from trained models (65:35 TabDDPM + Grouped GMM V2)...")
+    print(
+        "Exporting competition submissions directly from trained models (65:35 TabDDPM + Grouped GMM V2)..."
+    )
     export_competition_submission("nsl_kdd", target_n=40000, alpha=0.65, tau_reject=0.04)
     export_competition_submission("unsw_nb15", target_n=70000, alpha=0.65, tau_reject=0.05)
     print("All submissions exported and verified successfully!")

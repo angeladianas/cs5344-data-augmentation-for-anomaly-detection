@@ -260,9 +260,7 @@ def test_unsw_ct_state_ttl_matches_conditional_zero_rates():
     tcp_fin_nonzero = [
         value for value in reconstructed[:20]["ct_state_ttl"].to_list() if value != 0
     ]
-    global_nonzero = [
-        value for value in reconstructed[30:]["ct_state_ttl"].to_list() if value != 0
-    ]
+    global_nonzero = [value for value in reconstructed[30:]["ct_state_ttl"].to_list() if value != 0]
     assert tcp_fin_nonzero == [10] * 10
     assert set(global_nonzero) <= {1, 2, 4}
     assert counts["protocol"] == 0

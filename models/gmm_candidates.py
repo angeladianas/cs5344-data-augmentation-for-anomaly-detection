@@ -157,12 +157,9 @@ def allocate_group_sample_counts(
         raise ValueError("Protocol groups must contain at least one training row")
 
     total_rows = sum(sizes.values())
-    exact_allocations = {
-        name: n_samples * size / total_rows for name, size in sizes.items()
-    }
+    exact_allocations = {name: n_samples * size / total_rows for name, size in sizes.items()}
     allocations = {
-        name: int(np.floor(exact_count))
-        for name, exact_count in exact_allocations.items()
+        name: int(np.floor(exact_count)) for name, exact_count in exact_allocations.items()
     }
     remaining = n_samples - sum(allocations.values())
     remainders = sorted(
@@ -256,9 +253,7 @@ def derive_unsw_tcprtt(synthetic: pl.DataFrame) -> tuple[pl.DataFrame, int]:
     ackdat *= scale
     capped_total = synack + ackdat
     floating_point_overflow = capped_total > UNSW_TCPRTT_MAX_SECONDS
-    ackdat[floating_point_overflow] = (
-        UNSW_TCPRTT_MAX_SECONDS - synack[floating_point_overflow]
-    )
+    ackdat[floating_point_overflow] = UNSW_TCPRTT_MAX_SECONDS - synack[floating_point_overflow]
 
     synthetic = synthetic.with_columns(
         pl.Series("synack", synack).cast(synthetic.schema["synack"]),
@@ -284,16 +279,11 @@ def zero_unsw_tcp_fields_for_non_tcp(
 
     non_tcp = pl.col("proto").str.to_lowercase() != "tcp"
     zeroed_counts = {
-        feature: int(
-            synthetic.filter(non_tcp)[feature].ne(0).sum()
-        )
+        feature: int(synthetic.filter(non_tcp)[feature].ne(0).sum())
         for feature in UNSW_TCP_ONLY_FEATURES
     }
     result = synthetic.with_columns(
-        pl.when(non_tcp)
-        .then(pl.lit(0))
-        .otherwise(pl.col(feature))
-        .alias(feature)
+        pl.when(non_tcp).then(pl.lit(0)).otherwise(pl.col(feature)).alias(feature)
         for feature in UNSW_TCP_ONLY_FEATURES
     )
     return result, zeroed_counts
@@ -469,9 +459,7 @@ def derive_unsw_packet_means(
         if (packet_counts < 0).any() or (byte_counts < 0).any():
             raise ValueError(f"Negative byte or packet counts for {mean_column}")
         zero_packet_rows = packet_counts == 0
-        zero_packet_repairs[byte_column] = int(
-            np.count_nonzero(byte_counts[zero_packet_rows] != 0)
-        )
+        zero_packet_repairs[byte_column] = int(np.count_nonzero(byte_counts[zero_packet_rows] != 0))
         byte_counts[zero_packet_rows] = 0
 
         ratios = np.divide(
@@ -699,7 +687,9 @@ def generate_gmm_candidate_pool(
         raise ValueError("Decoded GMM samples contain missing values")
 
     source_path = REPO_ROOT / "data" / DATASET_SOURCE_DIRS[dataset] / "train.csv"
-    numeric_columns = [column for column in features if column not in DATASET_CONFIGS[dataset].categorical]
+    numeric_columns = [
+        column for column in features if column not in DATASET_CONFIGS[dataset].categorical
+    ]
     decimal_places = infer_source_decimal_precision(source_path, features, numeric_columns)
     decoded = align_candidate_precision(decoded, decimal_places)
     timing_violations = None
@@ -728,9 +718,7 @@ def generate_gmm_candidate_pool(
         print(f"Non-TCP TCP-only fields zeroed: {sum(tcp_only_zeroed.values())}")
         decoded, timing_violations = derive_unsw_tcprtt(decoded)
         print(f"Timing violations: {timing_violations}")
-        decoded, packet_mean_violations, zero_packet_repairs = derive_unsw_packet_means(
-            decoded
-        )
+        decoded, packet_mean_violations, zero_packet_repairs = derive_unsw_packet_means(decoded)
         for feature, count in packet_mean_violations.items():
             print(f"{feature} integer byte/packet consistency violations: {count}")
         print(f"Zero-packet byte-count repairs: {sum(zero_packet_repairs.values())}")
@@ -745,9 +733,7 @@ def generate_gmm_candidate_pool(
             raise ValueError("Rare-pair donor rows must be aligned development-normal records")
         synthetic_pd = pd.DataFrame(decoded.to_dict(as_series=False))
         real_normal_pd = pd.DataFrame(
-            real_normal.select([*RARE_PAIR_CONTEXT, *RARE_PAIR_FEATURES]).to_dict(
-                as_series=False
-            )
+            real_normal.select([*RARE_PAIR_CONTEXT, *RARE_PAIR_FEATURES]).to_dict(as_series=False)
         )
         reconstructed = reconstruct_rare_pair(
             synthetic_pd,
@@ -777,9 +763,7 @@ def generate_gmm_candidate_pool(
             "generation_group": generated_group_labels,
             "component": component_ids,
         }
-    ).to_csv(
-        output_dir / "component_assignments.csv", index=False
-    )
+    ).to_csv(output_dir / "component_assignments.csv", index=False)
     joblib.dump(
         models["all"] if generation_version == "v1" else models,
         output_dir / "gmm_model.joblib",
