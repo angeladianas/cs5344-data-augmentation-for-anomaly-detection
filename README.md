@@ -54,9 +54,9 @@ The pipeline automatically:
 ## 3. Interactive Walkthrough & Exploratory Workings
 
 For an interactive, cell-by-cell walkthrough with visualizations, mathematical justifications, ratio sweeps, and boundary filtering curves, open:
-- [`tmp_notebooks/step_5_ensemble.ipynb`](tmp_notebooks/step_5_ensemble.ipynb)
+- [`notebook/step_5_ensemble.ipynb`](notebook/step_5_ensemble.ipynb)
 
-All notebooks across the project's development milestones are preserved under [`tmp_notebooks/`](tmp_notebooks/) to showcase exploratory workings and sprint analyses, while the core production algorithms have been fully refactored into the modular Python codebase (`models/` and `utils/`).
+All notebooks across the project's development milestones are organized under [`notebook/`](notebook/) to showcase exploratory workings and sprint analyses, while the core production algorithms have been fully refactored into the modular Python codebase (`models/` and `utils/`).
 
 A comprehensive version-by-version log of candidate sources, filtering parameters, local validation scores ($S_{\text{val}}$), and official Kaggle public scores is maintained in:
 - [`submissions/EXPERIMENT_TRACKER.md`](submissions/EXPERIMENT_TRACKER.md)
@@ -106,7 +106,7 @@ cs5344-data-augmentation-for-anomaly-detection/
 │   ├── models/                     # Trained TabDDPM weights (.pt) and LightGBM filters (.pkl)
 │   └── boundary_filter_performance.png
 │
-├── tmp_notebooks/                  # Exploratory research & scratch notebooks (preserving all workings)
+├── notebook/                       # Exploratory research & demonstration notebooks
 │   ├── step_5_ensemble.ipynb       # Master end-to-end ensemble walkthrough
 │   ├── preprocessing/              # Exploratory data audit and quantile scaling
 │   └── models/                     # Exploratory LightGBM rejection boundary experiments
