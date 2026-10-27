@@ -523,7 +523,7 @@ nb = {
     "nbformat_minor": 5,
 }
 
-(REPO_ROOT / "notebook/step_5_ensemble.ipynb").write_text(
+(REPO_ROOT / "tmp_notebooks/step_5_ensemble.ipynb").write_text(
     json.dumps(nb, indent=1), encoding="utf-8"
 )
-print("Updated notebook/step_5_ensemble.ipynb successfully.")
+print("Updated tmp_notebooks/step_5_ensemble.ipynb successfully.")

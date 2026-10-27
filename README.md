@@ -51,10 +51,12 @@ The pipeline automatically:
 
 ---
 
-## 3. Interactive Walkthrough Notebook
+## 3. Interactive Walkthrough & Exploratory Workings
 
 For an interactive, cell-by-cell walkthrough with visualizations, mathematical justifications, ratio sweeps, and boundary filtering curves, open:
-- [`notebook/step_5_ensemble.ipynb`](notebook/step_5_ensemble.ipynb)
+- [`tmp_notebooks/step_5_ensemble.ipynb`](tmp_notebooks/step_5_ensemble.ipynb)
+
+All notebooks across the project's development milestones are preserved under [`tmp_notebooks/`](tmp_notebooks/) to showcase exploratory workings and sprint analyses, while the core production algorithms have been fully refactored into the modular Python codebase (`models/` and `utils/`).
 
 A comprehensive version-by-version log of candidate sources, filtering parameters, local validation scores ($S_{\text{val}}$), and official Kaggle public scores is maintained in:
 - [`submissions/EXPERIMENT_TRACKER.md`](submissions/EXPERIMENT_TRACKER.md)
@@ -79,18 +81,20 @@ cs5344-data-augmentation-for-anomaly-detection/
 │   │   ├── modules.py              # Residual MLP denoiser with sinusoidal time embeddings
 │   │   ├── trainer.py              # Training loop with AdamW and cosine scheduling
 │   │   └── sampler.py              # Reverse diffusion candidate sampler
+│   ├── ensemble.py                 # Master dual-generator TabDDPM + GMM V2 ensemble engine
 │   ├── gmm_baseline.py             # BIC-optimized Gaussian Mixture Model engine
-│   └── gmm_candidates.py           # Protocol grouping, conditional donor sampling, and repairs
+│   └── gmm_candidates.py           # Protocol grouping and conditional donor sampling
 │
 ├── utils/                          # Common transformations & evaluation harness
 │   ├── dataset_configs.py          # Strict feature semantic schemas
+│   ├── domain_rules.py             # Network RFC protocol invariants & precision alignment
 │   ├── preprocessing.py            # Data auditing, quantile scaling, and split generation
 │   ├── decoding.py                 # TabularDecoder restoring exact dtypes and bounds
 │   ├── boundary_filter.py          # Supervised LightGBM boundary filter
 │   └── evaluator.py                # Kaggle-equivalent benchmark (ECOD + 10-seed IForest)
 │
 ├── scripts/                        # Pipelines and build utilities
-│   ├── export_competition_submissions.py # Core direct-generation ensemble implementation
+│   ├── export_competition_submissions.py # Direct ensemble generation script wrapper
 │   ├── build_ensemble_notebook.py  # Builder script for step_5_ensemble.ipynb
 │   └── train_tabddpm.py            # TabDDPM training entry point
 │
@@ -104,10 +108,10 @@ cs5344-data-augmentation-for-anomaly-detection/
 │   ├── models/                     # Trained TabDDPM weights (.pt) and LightGBM filters (.pkl)
 │   └── boundary_filter_performance.png
 │
-├── notebook/                       # Jupyter walkthroughs
+├── tmp_notebooks/                  # Exploratory research & scratch notebooks (preserving all workings)
 │   ├── step_5_ensemble.ipynb       # Master end-to-end ensemble walkthrough
-│   ├── preprocessing/              # Exploratory preprocessing notebooks
-│   └── models/                     # Exploratory model notebooks
+│   ├── preprocessing/              # Exploratory data audit and quantile scaling
+│   └── models/                     # Exploratory LightGBM rejection boundary experiments
 │
 └── tests/                          # Automated verification and audit suite
     ├── conftest.py                 # Threading and OpenMP safety fixtures

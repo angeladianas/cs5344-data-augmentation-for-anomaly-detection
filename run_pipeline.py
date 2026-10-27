@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.export_competition_submissions import export_competition_submission
+from models.ensemble import export_competition_submission
 
 
 def main() -> None:
