@@ -302,6 +302,7 @@ def calibrate_unsw_response_body_len(
             raise ValueError(f"{name} data must not be empty")
 
     def http_mask(frame: pl.DataFrame) -> np.ndarray:
+        r"""Identify rows representing HTTP traffic based on service name or method counts."""
         service_is_http = np.char.lower(np.asarray(frame["service"].to_list(), dtype=str)) == "http"
         method_counts = frame["ct_flw_http_mthd"].to_numpy().astype(float)
         if not np.isfinite(method_counts).all():

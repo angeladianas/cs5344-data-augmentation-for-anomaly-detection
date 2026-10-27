@@ -14,6 +14,7 @@ columns only; labels, submission IDs, and boundary filtering belong to callers.
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import joblib
 import numpy as np
@@ -23,7 +24,13 @@ import polars as pl
 class TabularDecoder:
     """Restore scales, categories, constants, feature order, and original dtypes."""
 
-    def __init__(self, preprocessing, model_inputs, transformers):
+    def __init__(
+        self,
+        preprocessing: dict[str, Any],
+        model_inputs: dict[str, Any],
+        transformers: dict[str, Any],
+    ) -> None:
+        r"""Initialize decoder with verified preprocessing metadata, inputs, and scikit-learn transformers."""
         self.preprocessing = preprocessing
         self.model_inputs = model_inputs
         self.transformers = transformers
@@ -60,7 +67,8 @@ class TabularDecoder:
         return cls(preprocessing, model, joblib.load(paths["numeric_transformers"]))
 
     @staticmethod
-    def _matrix(values, width, name):
+    def _matrix(values: Any, width: int, name: str) -> np.ndarray:
+        r"""Validate dimensions and finiteness of an incoming numerical feature matrix."""
         values = np.asarray(values)
         if values.ndim != 2 or values.shape[1] != width:
             raise ValueError(f"{name} must be a two-dimensional array with {width} columns")
@@ -68,7 +76,10 @@ class TabularDecoder:
             raise ValueError(f"{name} must contain finite numerical values")
         return values
 
-    def _decode_numerical(self, values, clip_to_normal_bounds):
+    def _decode_numerical(
+        self, values: np.ndarray, clip_to_normal_bounds: bool
+    ) -> dict[str, np.ndarray]:
+        r"""Inverse-transform scaled numerical features, enforcing integer flags and domain bounds."""
         decoded = {}
         for i, column in enumerate(self.numerical):
             rule = self.preprocessing["columns"][column]
@@ -92,7 +103,13 @@ class TabularDecoder:
             decoded[column] = np.clip(restored, lower, upper)
         return decoded
 
-    def _finish(self, numeric, discrete, rows):
+    def _finish(
+        self,
+        numeric: dict[str, np.ndarray],
+        discrete: dict[str, np.ndarray | list[Any]],
+        rows: int,
+    ) -> pl.DataFrame:
+        r"""Recombine numeric, discrete, and constant columns into a typed Polars DataFrame."""
         columns = {**numeric, **discrete}
         columns.update({column: [value] * rows for column, value in self.constants.items()})
         output = []

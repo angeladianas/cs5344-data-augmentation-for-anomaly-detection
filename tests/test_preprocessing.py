@@ -8,7 +8,8 @@ from utils.dataset_configs import NSL_KDD, UNSW_NB15, DatasetConfig
 from utils.preprocessing import make_development_split, run_preprocessing
 
 
-def test_configs_cover_different_semantics():
+def test_configs_cover_different_semantics() -> None:
+    r"""Verify dataset config feature counts and semantic type mappings."""
     assert len(NSL_KDD.features) == len(set(NSL_KDD.features)) == 41
     assert len(UNSW_NB15.features) == len(set(UNSW_NB15.features)) == 42
     assert NSL_KDD.semantic_type("serror_rate") == "bounded_rate"
@@ -16,7 +17,8 @@ def test_configs_cover_different_semantics():
     assert UNSW_NB15.semantic_type("is_ftp_login") == "discrete_state"
 
 
-def test_duplicate_groups_and_conflicting_labels():
+def test_duplicate_groups_and_conflicting_labels() -> None:
+    r"""Verify group split stratification, determinism, and rejection of conflicting labels."""
     frame = pl.DataFrame(
         {
             "feature": [i for i in range(20) for _ in range(3)],
@@ -33,7 +35,10 @@ def test_duplicate_groups_and_conflicting_labels():
         make_development_split(conflict, ["feature"], "label", 0.2, 42)
 
 
-def test_pipeline_supports_a_custom_schema_and_preserves_tokens(tmp_path):
+def test_pipeline_supports_a_custom_schema_and_preserves_tokens(
+    tmp_path: pytest.TempPathFactory,
+) -> None:
+    r"""Verify preprocessing pipeline on synthetic toy schema, including vocabulary preservation."""
     config = DatasetConfig(
         name="fixture",
         categorical=("category",),
@@ -65,7 +70,8 @@ def test_pipeline_supports_a_custom_schema_and_preserves_tokens(tmp_path):
     assert (tmp_path / "output" / "fixture" / "audit" / "audit_report.json").is_file()
 
 
-def test_wrong_dataset_schema_fails_before_export(tmp_path):
+def test_wrong_dataset_schema_fails_before_export(tmp_path: pytest.TempPathFactory) -> None:
+    r"""Verify that mismatched schema input fails validation before writing any artifacts."""
     source = tmp_path / "train.csv"
     pl.DataFrame({"unexpected": [1, 2], "is_anomaly": [0, 1]}).write_csv(source)
     with pytest.raises(ValueError, match="configured schema"):

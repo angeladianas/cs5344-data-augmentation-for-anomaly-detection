@@ -53,6 +53,7 @@ class TestBoundaryFilterResilience:
 
     @pytest.fixture
     def toy_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        r"""Generate synthetic normal and attack clusters with mixed features for testing."""
         np.random.seed(42)
         n = 200
         norm_x = np.random.normal(loc=0.0, scale=1.0, size=(n, 2))

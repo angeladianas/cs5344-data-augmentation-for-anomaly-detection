@@ -9,7 +9,8 @@ from utils import TabularDecoder
 
 
 @pytest.fixture
-def decoder():
+def decoder() -> TabularDecoder:
+    r"""Build a mock TabularDecoder with continuous, discrete, and constant features."""
     transformer = StandardScaler().fit(np.array([[0.0], [10.0]]))
     preprocessing = {
         "feature_order": ["count", "service", "binary", "constant"],
@@ -35,7 +36,8 @@ def decoder():
     return TabularDecoder(preprocessing, model, {"count": transformer})
 
 
-def test_restore_constraints_types_and_order(decoder):
+def test_restore_constraints_types_and_order(decoder: TabularDecoder) -> None:
+    r"""Verify restoration of domain bounds, integer casting, and schema column order."""
     result = decoder.decode_tabddpm(
         np.array([[-2.0], [0.12], [3.0]]), np.array([[0, 1], [1, 0], [0, 0]])
     )
@@ -58,12 +60,14 @@ def test_restore_constraints_types_and_order(decoder):
 
 
 @pytest.mark.parametrize("codes", [[[-1, 0]], [[2, 0]], [[0.5, 0]], [[0, np.nan]]])
-def test_invalid_codes_rejected(decoder, codes):
+def test_invalid_codes_rejected(decoder: TabularDecoder, codes: list[list[float]]) -> None:
+    r"""Verify that out-of-vocabulary and non-integer categorical codes raise ValueError."""
     with pytest.raises(ValueError):
         decoder.decode_tabddpm(np.array([[0.0]]), np.array(codes))
 
 
-def test_invalid_shape_nonfinite_and_row_alignment(decoder):
+def test_invalid_shape_nonfinite_and_row_alignment(decoder: TabularDecoder) -> None:
+    r"""Verify shape checks, non-finite value checks, and row alignment exceptions."""
     for values in [np.array([0.0]), np.array([[0.0, 1.0]]), np.array([[np.inf]])]:
         with pytest.raises(ValueError):
             decoder.decode_tabddpm(values, np.array([[0, 0]]))
@@ -71,7 +75,8 @@ def test_invalid_shape_nonfinite_and_row_alignment(decoder):
         decoder.decode_tabddpm(np.zeros((2, 1)), np.zeros((1, 2)))
 
 
-def test_gmm_preserves_whole_discrete_tuple(decoder):
+def test_gmm_preserves_whole_discrete_tuple(decoder: TabularDecoder) -> None:
+    r"""Verify that GMM discrete decoding preserves joint donor tuples and removes provenance."""
     donors = pl.DataFrame({"service": ["smtp", "http"], "binary": [1, 0], "source_row": [8, 2]})
     output = decoder.decode_gmm(np.array([[0.0], [1.0]]), donors)
     assert output.select("service", "binary").equals(donors.select("service", "binary"))
@@ -82,6 +87,7 @@ def test_gmm_preserves_whole_discrete_tuple(decoder):
         decoder.decode_gmm(np.zeros((1, 1)), donors)
 
 
-def test_empty_arrays_restore_schema(decoder):
+def test_empty_arrays_restore_schema(decoder: TabularDecoder) -> None:
+    r"""Verify that decoding empty arrays preserves column schema and zero row height."""
     output = decoder.decode_tabddpm(np.empty((0, 1)), np.empty((0, 2), dtype=np.int64))
     assert output.shape == (0, 4)
