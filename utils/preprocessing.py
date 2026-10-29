@@ -458,7 +458,8 @@ def run_preprocessing(
     print("Constant features:", constant_features)
     print("Fitted numerical transformers:", len(numeric_transformers))
 
-    def decode_generator_categories(encoded):
+    def decode_generator_categories(encoded: pl.DataFrame) -> pl.DataFrame:
+        r"""Decode integer indices back into original string categories using generator vocabularies."""
         decoded = []
         for c, vocabulary in generator_vocabularies.items():
             s = encoded[c]
@@ -831,7 +832,8 @@ def run_preprocessing(
         saved_tab_rows = arrays["source_row"].copy()
     artifact_checks = []
 
-    def record_check(name, passed):
+    def record_check(name: str, passed: bool) -> None:
+        r"""Append an artifact validation check result to the audit log."""
         artifact_checks.append({"check": name, "passed": bool(passed)})
 
     record_check(

@@ -59,6 +59,7 @@ class GaussianMultinomialDiffusion:
         schedule: Literal["cosine", "linear"] = "cosine",
         device: torch.device | None = None,
     ) -> None:
+        r"""Initialize diffusion schedule coefficients for Gaussian and categorical processes."""
         self.num_timesteps: int = num_timesteps
         self.device: torch.device = device or torch.device("cpu")
 

@@ -262,6 +262,7 @@ def train_and_evaluate(
 
 
 def main() -> None:
+    r"""Parse command line arguments and execute TabDDPM training, sampling, and evaluation."""
     args = parse_args()
     train_and_evaluate(
         dataset_name=args.dataset,

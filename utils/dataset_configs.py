@@ -19,7 +19,8 @@ class DatasetConfig:
     log_plot_features: tuple[str, ...] = ()
 
     @property
-    def features(self):
+    def features(self) -> list[str]:
+        r"""Return all feature names across semantic groups in schema definition order."""
         return [
             *self.categorical,
             *self.counts,
@@ -29,7 +30,8 @@ class DatasetConfig:
             *self.discrete,
         ]
 
-    def semantic_type(self, column):
+    def semantic_type(self, column: str) -> str:
+        r"""Determine the semantic domain type of a specific feature column."""
         for kind, columns in [
             ("categorical", self.categorical),
             ("binary", self.binary),

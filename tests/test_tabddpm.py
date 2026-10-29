@@ -27,6 +27,7 @@ class TestDiffusionSchedules:
     """Tests for beta variance schedules and mathematical transition tensors."""
 
     def test_linear_schedule_bounds(self) -> None:
+        r"""Verify linear beta schedule boundary values, shape, and monotonicity."""
         betas = make_beta_schedule("linear", num_timesteps=100, linear_start=1e-4, linear_end=0.02)
         assert betas.shape == (100,)
         assert betas.dtype == torch.float32
@@ -36,12 +37,14 @@ class TestDiffusionSchedules:
         assert torch.isclose(betas[-1], torch.tensor(0.02))
 
     def test_cosine_schedule_bounds(self) -> None:
+        r"""Verify cosine beta schedule bounds according to Nichol & Dhariwal formulation."""
         betas = make_beta_schedule("cosine", num_timesteps=100)
         assert betas.shape == (100,)
         assert torch.all(betas >= 1e-5)
         assert torch.all(betas <= 0.999)
 
     def test_invalid_schedule_raises(self) -> None:
+        r"""Verify that unsupported schedule names raise a ValueError."""
         with pytest.raises(ValueError, match="Unsupported schedule"):
             make_beta_schedule("exponential", num_timesteps=100)  # type: ignore[arg-type]
 
@@ -51,9 +54,11 @@ class TestGaussianMultinomialDiffusion:
 
     @pytest.fixture
     def diffusion(self) -> GaussianMultinomialDiffusion:
+        r"""Instantiate a fast 50-step diffusion engine for unit tests."""
         return GaussianMultinomialDiffusion(num_timesteps=50, schedule="linear")
 
     def test_q_sample_numerical(self, diffusion: GaussianMultinomialDiffusion) -> None:
+        r"""Verify forward Gaussian q-sampling produces correct tensor shapes and noise scale."""
         x_0 = torch.zeros(16, 5)
         t = torch.full((16,), 49, dtype=torch.long)
         x_t, noise = diffusion.q_sample_numerical(x_0, t)
@@ -64,6 +69,7 @@ class TestGaussianMultinomialDiffusion:
         assert x_t.std() > 0.5
 
     def test_p_sample_numerical_step(self, diffusion: GaussianMultinomialDiffusion) -> None:
+        r"""Verify single reverse Gaussian denoising step produces finite tensors."""
         x_t = torch.randn(16, 5)
         t = torch.full((16,), 10, dtype=torch.long)
         noise_pred = torch.randn(16, 5)
@@ -73,6 +79,7 @@ class TestGaussianMultinomialDiffusion:
         assert not torch.isnan(x_prev).any()
 
     def test_q_sample_categorical(self, diffusion: GaussianMultinomialDiffusion) -> None:
+        r"""Verify forward categorical transition maintains valid integer class indices."""
         cardinalities = [3, 5, 10]
         c_0 = torch.tensor([[0, 2, 8], [1, 4, 0], [2, 1, 5]], dtype=torch.long)
         t = torch.tensor([5, 10, 20], dtype=torch.long)
@@ -84,6 +91,7 @@ class TestGaussianMultinomialDiffusion:
             assert torch.all(c_t[:, j] < k)
 
     def test_p_sample_categorical_step(self, diffusion: GaussianMultinomialDiffusion) -> None:
+        r"""Verify reverse categorical step generates valid categorical indices."""
         cardinalities = [3, 4]
         c_t = torch.tensor([[1, 2], [0, 3]], dtype=torch.long)
         t = torch.tensor([1, 1], dtype=torch.long)
@@ -99,6 +107,7 @@ class TestTabDDPMModel:
     """Tests for MLP Denoiser architecture and forward passes."""
 
     def test_hybrid_forward_shapes(self) -> None:
+        r"""Verify hybrid architecture output shapes for continuous noise and categorical logits."""
         cardinalities = [2, 5, 8]
         model = TabDDPMModel(
             num_numerical=10,
@@ -123,6 +132,7 @@ class TestTabDDPMModel:
         assert cat_logits[2].shape == (b, 8)
 
     def test_pure_numerical_forward(self) -> None:
+        r"""Verify forward pass on continuous-only tabular architectures."""
         model = TabDDPMModel(
             num_numerical=6,
             cardinalities=[],
@@ -138,6 +148,7 @@ class TestTabDDPMModel:
         assert len(cat_logits) == 0
 
     def test_pure_categorical_forward(self) -> None:
+        r"""Verify forward pass on categorical-only tabular architectures."""
         model = TabDDPMModel(
             num_numerical=0,
             cardinalities=[4, 6],
@@ -154,6 +165,7 @@ class TestTabDDPMModel:
         assert cat_logits[1].shape == (2, 6)
 
     def test_empty_architecture_raises(self) -> None:
+        r"""Verify that constructing a model with 0 features raises ValueError."""
         with pytest.raises(ValueError, match="requires at least one"):
             TabDDPMModel(num_numerical=0, cardinalities=[])
 
@@ -162,6 +174,7 @@ class TestTabDDPMSamplerAndTrainer:
     """Tests for trainer convergence and batched reverse sampling."""
 
     def test_trainer_and_sampler_cycle(self) -> None:
+        r"""Verify full training convergence cycle and batched reverse sampling on synthetic data."""
         # Generate toy dataset
         np.random.seed(42)
         torch.manual_seed(42)
@@ -218,6 +231,7 @@ class TestTabDDPMSamplerAndTrainer:
         assert np.all(sampled_cat[:, 1] >= 0) and np.all(sampled_cat[:, 1] < 4)
 
     def test_sampler_invalid_arguments(self) -> None:
+        r"""Verify that non-positive sample count or batch size raises ValueError."""
         diffusion = GaussianMultinomialDiffusion(num_timesteps=5)
         model = TabDDPMModel(num_numerical=2, cardinalities=[2], hidden_dim=16)
         sampler = TabDDPMSampler(model, diffusion, [2], 2, device="cpu")
@@ -232,6 +246,7 @@ class TestTabDDPMDecoderIntegration:
     """Tests integration between TabDDPMSampler and TabularDecoder on real preprocessed data."""
 
     def test_nsl_kdd_end_to_end_decoding(self) -> None:
+        r"""Verify end-to-end TabDDPM sampling and restoration to raw unscaled NSL-KDD DataFrame."""
         data = np.load("output/nsl_kdd/model_inputs/tabddpm_inputs.npz")
         cardinalities = data["categorical_cardinalities"].tolist()
         d_num = data["X_num"].shape[1]

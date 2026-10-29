@@ -86,6 +86,7 @@ class LightGBMBoundaryFilter:
         params: dict[str, Any] | None = None,
         random_state: int = 42,
     ) -> None:
+        r"""Initialize the boundary filter with categorical column definitions and model parameters."""
         self.cat_cols: list[str] = list(cat_cols) if cat_cols else []
         self.random_state: int = random_state
         self.default_params: dict[str, Any] = {

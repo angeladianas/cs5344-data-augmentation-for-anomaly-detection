@@ -1,3 +1,13 @@
+r"""Unit and integration test suite for GMM candidate generation and post-processing.
+
+Tests component-conditional donor sampling, protocol-stratified allocation,
+marginal calibration, precision alignment, and domain invariant enforcement.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -22,7 +32,8 @@ from models.gmm_candidates import (
 )
 
 
-def test_component_conditional_sampling_preserves_discrete_tuples():
+def test_component_conditional_sampling_preserves_discrete_tuples() -> None:
+    r"""Verify that GMM discrete donor sampling preserves joint categorical associations."""
     donors = pl.DataFrame(
         {
             "protocol": ["tcp", "udp", "icmp", "tcp"],
@@ -56,7 +67,8 @@ def test_component_conditional_sampling_preserves_discrete_tuples():
     assert sampled.row(3) in {donors.row(2), donors.row(3)}
 
 
-def test_component_conditional_sampling_rejects_missing_component_mass():
+def test_component_conditional_sampling_rejects_missing_component_mass() -> None:
+    r"""Verify that components with zero probability mass raise a ValueError."""
     donors = pl.DataFrame({"category": ["a", "b"]})
 
     with pytest.raises(ValueError, match="probability mass"):
@@ -86,11 +98,12 @@ def test_component_conditional_sampling_rejects_missing_component_mass():
     ],
 )
 def test_protocol_group_sample_counts_follow_training_proportions(
-    dataset,
-    protocols,
-    expected_sizes,
-    expected_samples,
-):
+    dataset: str,
+    protocols: list[str],
+    expected_sizes: dict[str, int],
+    expected_samples: dict[str, int],
+) -> None:
+    r"""Verify protocol group mask sizes and proportional sample count allocations."""
     groups = protocol_group_masks(dataset, protocols)
     assert {name: int(mask.sum()) for name, mask in groups.items()} == expected_sizes
     n_samples = 21 if dataset == "unsw_nb15" else 20
@@ -98,7 +111,8 @@ def test_protocol_group_sample_counts_follow_training_proportions(
     assert sum(allocate_group_sample_counts(groups, n_samples).values()) == n_samples
 
 
-def test_generation_versions_select_ungrouped_and_protocol_grouped_masks():
+def test_generation_versions_select_ungrouped_and_protocol_grouped_masks() -> None:
+    r"""Verify GMM generation group mask selection for v1 (monolithic) and v2 (grouped)."""
     protocols = ["tcp", "udp", "arp"]
 
     v1_groups = generation_group_masks("unsw_nb15", "v1", protocols)
@@ -115,7 +129,8 @@ def test_generation_versions_select_ungrouped_and_protocol_grouped_masks():
         generation_group_masks("unsw_nb15", "v3", protocols)
 
 
-def test_gmm_marginal_calibration_matches_reference_tail():
+def test_gmm_marginal_calibration_matches_reference_tail() -> None:
+    r"""Verify that marginal empirical quantile calibration matches reference heavy tails."""
     generated = np.random.default_rng(42).normal(size=10_000)
     reference = np.sort(np.concatenate((np.arange(9_900), np.arange(1_000, 101_000, 1_000))))
 
@@ -129,7 +144,8 @@ def test_gmm_marginal_calibration_matches_reference_tail():
     assert calibrated.max() <= reference.max()
 
 
-def test_gmm_marginal_calibration_preserves_rare_zero_rate():
+def test_gmm_marginal_calibration_preserves_rare_zero_rate() -> None:
+    r"""Verify that rare zero-point masses in reference data are preserved after calibration."""
     reference = np.concatenate(([0.0], np.arange(1.0, 20_000.0)))
     generated = np.random.default_rng(42).normal(size=24_000)
 
@@ -138,7 +154,8 @@ def test_gmm_marginal_calibration_preserves_rare_zero_rate():
     assert np.count_nonzero(np.rint(calibrated) == 0) == 1
 
 
-def test_gmm_marginal_calibration_preserves_common_zero_rate():
+def test_gmm_marginal_calibration_preserves_common_zero_rate() -> None:
+    r"""Verify that dominant zero-inflation frequencies are preserved under marginal mapping."""
     reference = np.concatenate((np.zeros(2_600), np.arange(1.0, 13_401.0)))
     generated = np.random.default_rng(42).normal(size=24_000)
 
@@ -147,7 +164,8 @@ def test_gmm_marginal_calibration_preserves_common_zero_rate():
     assert abs(np.count_nonzero(calibrated == 0) - 24_000 * 2_600 / 16_000) <= 1
 
 
-def test_source_decimal_precision_and_candidate_rounding(tmp_path):
+def test_source_decimal_precision_and_candidate_rounding(tmp_path: pytest.TempPathFactory) -> None:
+    r"""Verify inference of column decimal precisions and rounding alignment on candidates."""
     source = tmp_path / "source.csv"
     source.write_text(
         "rate,count,category\n0.00,1,normal\n0.01,2.0,attack\n1.0,3,normal\n",
@@ -169,7 +187,8 @@ def test_source_decimal_precision_and_candidate_rounding(tmp_path):
     assert aligned["count"].to_list() == [1.0, 2.0]
 
 
-def test_derive_unsw_tcprtt_from_components():
+def test_derive_unsw_tcprtt_from_components() -> None:
+    r"""Verify deterministic mathematical constraint tcprtt = synack + ackdat with bounds."""
     candidates = pl.DataFrame(
         {
             "tcprtt": [9.0, 9.0, 9.0],
@@ -187,7 +206,8 @@ def test_derive_unsw_tcprtt_from_components():
     assert violations == 0
 
 
-def test_zero_unsw_tcp_fields_for_non_tcp_protocols():
+def test_zero_unsw_tcp_fields_for_non_tcp_protocols() -> None:
+    r"""Verify that TCP-specific header window/sequence fields are zeroed for non-TCP traffic."""
     candidates = pl.DataFrame(
         {
             "proto": ["tcp", "udp", "icmp"],
@@ -206,7 +226,8 @@ def test_zero_unsw_tcp_fields_for_non_tcp_protocols():
     assert zeroed_counts == {"swin": 1, "stcpb": 1, "dtcpb": 1, "dwin": 1}
 
 
-def test_unsw_response_body_length_uses_http_conditional_reference():
+def test_unsw_response_body_length_uses_http_conditional_reference() -> None:
+    r"""Verify HTTP-conditional calibration of response_body_len and non-HTTP zeroing."""
     synthetic = pl.DataFrame(
         {
             "service": ["http", "http", "dns", "dns"],
@@ -230,7 +251,8 @@ def test_unsw_response_body_length_uses_http_conditional_reference():
     assert metrics["non_http"]["calibrated_p99"] == 0.0
 
 
-def test_unsw_ct_state_ttl_matches_conditional_zero_rates():
+def test_unsw_ct_state_ttl_matches_conditional_zero_rates() -> None:
+    r"""Verify conditional zero rate matching and donor value sampling for ct_state_ttl."""
     real_normal = pl.DataFrame(
         {
             "proto": ["tcp", "tcp", "tcp", "tcp", "udp", "udp", "tcp", "tcp"],
@@ -267,7 +289,8 @@ def test_unsw_ct_state_ttl_matches_conditional_zero_rates():
     assert counts["global"] == 20
 
 
-def test_derive_unsw_packet_means_and_zero_packet_behavior():
+def test_derive_unsw_packet_means_and_zero_packet_behavior() -> None:
+    r"""Verify packet mean quotient relationships and handling of zero packet counts."""
     candidates = pl.DataFrame(
         {
             "sbytes": [10, 1],
@@ -297,7 +320,8 @@ def test_derive_unsw_packet_means_and_zero_packet_behavior():
     assert zero_packet_repairs == {"sbytes": 0, "dbytes": 1}
 
 
-def test_rare_pair_reconstruction_uses_context_and_fallbacks():
+def test_rare_pair_reconstruction_uses_context_and_fallbacks() -> None:
+    r"""Verify context-conditional donor sampling and fallback tiers for rare discrete pairs."""
     real_normal = pd.DataFrame(
         {
             "protocol_type": ["tcp", "tcp", "udp", "icmp"],
@@ -335,12 +359,22 @@ def test_rare_pair_reconstruction_uses_context_and_fallbacks():
     assert reconstructed.loc[1, "num_compromised"] != 200
 
 
-def test_boundary_filter_writes_filtered_candidates_and_scores(tmp_path, monkeypatch):
+def test_boundary_filter_writes_filtered_candidates_and_scores(
+    tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r"""Verify boundary filter output serialization and score column matching."""
+
     class FakeBoundaryFilter:
-        def __init__(self):
+        r"""Mock boundary filter classifier for isolated unit testing."""
+
+        def __init__(self) -> None:
+            r"""Initialize mock boundary filter with dummy feature column names."""
             self.feature_names = ["feature_a", "feature_b"]
 
-        def filter_candidates(self, candidates, *, tau_reject):
+        def filter_candidates(
+            self, candidates: pl.DataFrame, *, tau_reject: float
+        ) -> tuple[pl.DataFrame, float, np.ndarray]:
+            r"""Filter candidates based on fixed mock anomaly posterior probabilities."""
             probabilities = np.array([0.01, 0.11, 0.10])
             accepted = probabilities <= tau_reject
             return candidates[accepted], float(accepted.mean()), probabilities
@@ -349,7 +383,8 @@ def test_boundary_filter_writes_filtered_candidates_and_scores(tmp_path, monkeyp
     model_path.touch()
     monkeypatch.setattr(gmm_candidates, "BOUNDARY_FILTER_DIR", tmp_path)
 
-    def load_fake_boundary_filter(path):
+    def load_fake_boundary_filter(path: str | Path) -> FakeBoundaryFilter:
+        r"""Return mock filter instance asserting expected model path."""
         assert path == model_path
         return FakeBoundaryFilter()
 

@@ -1,3 +1,9 @@
+r"""Gaussian Mixture Model (GMM) baseline training and evaluation utilities.
+
+Provides functions to select optimal GMM component counts via Bayesian Information
+Criterion (BIC) and generate synthetic continuous feature vectors.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
