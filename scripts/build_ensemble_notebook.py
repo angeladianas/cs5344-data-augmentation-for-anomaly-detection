@@ -47,8 +47,6 @@ cells.append(
         "code",
         """import os
 import sys
-import json
-import time
 from pathlib import Path
 
 # Thread safety settings
@@ -56,11 +54,12 @@ os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import polars as pl
 import torch
-import matplotlib.pyplot as plt
+
 
 def find_repo_root():
     cwd = Path.cwd()
@@ -75,17 +74,22 @@ if str(REPO_ROOT) not in sys.path:
 
 print(f"Project root: {REPO_ROOT}")
 
+from models.gmm_baseline import fit_gmm_baseline
+from models.gmm_candidates import (
+    allocate_group_sample_counts,
+    generation_group_masks,
+    sample_component_conditional_donors,
+)
+from models.tabddpm import (
+    GaussianMultinomialDiffusion,
+    TabDDPMModel,
+    TabDDPMSampler,
+    resolve_device,
+)
 from utils.boundary_filter import LightGBMBoundaryFilter
 from utils.dataset_configs import NSL_KDD, UNSW_NB15
 from utils.decoding import TabularDecoder
 from utils.evaluator import evaluate_synthetic_utility
-from models.tabddpm import TabDDPMModel, GaussianMultinomialDiffusion, TabDDPMSampler, resolve_device
-from models.gmm_baseline import fit_gmm_baseline
-from models.gmm_candidates import (
-    generation_group_masks,
-    allocate_group_sample_counts,
-    sample_component_conditional_donors,
-)
 
 device = resolve_device("auto")
 print(f"Compute device: {device}")""",
@@ -113,7 +117,7 @@ cells.append(
     ckpt_path = REPO_ROOT / f"results/models/{dataset_name}/tabddpm_best.pt"
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Missing weights: {ckpt_path}")
-    
+
     ckpt = torch.load(ckpt_path, map_location=compute_device, weights_only=False)
     model = TabDDPMModel(
         num_numerical=ckpt["num_numerical"],
@@ -124,7 +128,7 @@ cells.append(
     ).to(compute_device)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
-    
+
     diffusion = GaussianMultinomialDiffusion(num_timesteps=1000, schedule="cosine", device=compute_device)
     return TabDDPMSampler(
         model=model,
@@ -150,11 +154,11 @@ def fit_and_sample_gmm(
     \"\"\"Fit protocol-grouped GMM on model inputs and sample decoded rows.\"\"\"
     if n_samples <= 0:
         return pl.DataFrame()
-        
+
     input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
     numerical_df = pd.read_csv(input_dir / "gmm_inputs.csv")
     donors = pl.read_parquet(input_dir / "gmm_donors.parquet")
-    
+
     protocol_column = "protocol_type" if dataset_name == "nsl_kdd" else "proto"
     group_masks = generation_group_masks(
         dataset_name,
@@ -162,24 +166,24 @@ def fit_and_sample_gmm(
         donors[protocol_column].to_list(),
     )
     group_sample_counts = allocate_group_sample_counts(group_masks, n_samples)
-    
+
     generated_frames = []
     for group_name, group_mask in group_masks.items():
         count = group_sample_counts[group_name]
         if count == 0:
             continue
-            
+
         group_numerical = numerical_df[group_mask]
         best_model, info = fit_gmm_baseline(
             group_numerical,
             candidate_components=(5, 10, 15, 20),
             random_state=seed,
         )
-        
+
         feature_cols = info["features"]
         X = group_numerical[feature_cols].to_numpy(dtype=float)
         responsibilities = best_model.predict_proba(X)
-        
+
         sampled_X, sampled_components = best_model.sample(count)
         group_donors = sample_component_conditional_donors(
             sampled_components,
@@ -189,7 +193,7 @@ def fit_and_sample_gmm(
         )
         group_decoded = decoder.decode_gmm(sampled_X, group_donors)
         generated_frames.append(group_decoded)
-        
+
     return pl.concat(generated_frames, how="vertical")
 
 print("Generators initialized.")""",
@@ -233,12 +237,12 @@ cells.append(
 def enforce_domain_invariants(df: pl.DataFrame, dataset_name: str, decimal_precision: dict[str, int] | None = None) -> pl.DataFrame:
     \"\"\"Enforce protocol invariants and decimal precision on synthetic rows.\"\"\"
     result = df.clone()
-    
+
     if decimal_precision:
         round_exprs = [pl.col(c).round(places) for c, places in decimal_precision.items() if c in result.columns]
         if round_exprs:
             result = result.with_columns(round_exprs)
-            
+
     if dataset_name == "unsw_nb15":
         if "proto" in result.columns:
             non_tcp = pl.col("proto").str.to_lowercase() != "tcp"
@@ -248,7 +252,7 @@ def enforce_domain_invariants(df: pl.DataFrame, dataset_name: str, decimal_preci
                     pl.when(non_tcp).then(pl.lit(0)).otherwise(pl.col(f)).alias(f)
                     for f in tcp_fields
                 ])
-                
+
         if all(c in result.columns for c in ["synack", "ackdat", "tcprtt"]):
             synack = result["synack"].to_numpy().astype(float)
             ackdat = result["ackdat"].to_numpy().astype(float)
@@ -263,7 +267,7 @@ def enforce_domain_invariants(df: pl.DataFrame, dataset_name: str, decimal_preci
                 pl.Series("ackdat", ackdat).cast(result.schema["ackdat"]),
                 pl.Series("tcprtt", synack + ackdat).cast(result.schema["tcprtt"]),
             ])
-            
+
         if all(c in result.columns for c in ["sbytes", "spkts", "smean"]):
             sbytes = result["sbytes"].to_numpy().astype(float)
             spkts = result["spkts"].to_numpy().astype(float)
@@ -275,7 +279,7 @@ def enforce_domain_invariants(df: pl.DataFrame, dataset_name: str, decimal_preci
                 pl.Series("sbytes", sbytes).cast(result.schema["sbytes"]),
                 pl.Series("smean", np.floor(smean + 0.5).astype(np.int64)),
             ])
-            
+
         if all(c in result.columns for c in ["dbytes", "dpkts", "dmean"]):
             dbytes = result["dbytes"].to_numpy().astype(float)
             dpkts = result["dpkts"].to_numpy().astype(float)
@@ -311,7 +315,7 @@ cells.append(
         """def run_ratio_sweep(
     dataset_name: str,
     total_candidates: int = 10000,
-    ratios: list[tuple[float, float, str]] = None,
+    ratios: list[tuple[float, float, str]] | None = None,
     gmm_version: str = "v2",
     tau_reject: float = 0.04,
     seed: int = 42,
@@ -330,41 +334,41 @@ cells.append(
     input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
     val_path = REPO_ROOT / f"output/{dataset_name}/splits/validation.parquet"
     train_csv = REPO_ROOT / f"data/{'NSL-KDD' if dataset_name == 'nsl_kdd' else 'UNSW-NB15'}/train.csv"
-    
+
     decoder = TabularDecoder.from_directory(input_dir)
     df_val = pl.read_parquet(val_path)
-    
+
     config = NSL_KDD if dataset_name == "nsl_kdd" else UNSW_NB15
     cat_cols = list(config.categorical)
     numeric_cols = [c for c in decoder.features if c not in cat_cols]
     precision = infer_source_decimal_precision(train_csv, decoder.features, numeric_cols)
-    
+
     filter_path = REPO_ROOT / f"results/models/boundary_filter_{dataset_name}.pkl"
     boundary_filter = LightGBMBoundaryFilter.load(filter_path)
     if hasattr(boundary_filter, "model"):
         boundary_filter.model.set_params(n_jobs=1)
-        
+
     sampler = load_tabddpm_sampler(dataset_name, device)
     tabddpm_pool = sample_tabddpm(sampler, decoder, total_candidates, seed=seed)
     gmm_pool = fit_and_sample_gmm(dataset_name, decoder, total_candidates, gmm_version=gmm_version, seed=seed)
-    
+
     sweep_results = []
     for alpha, beta, label in ratios:
-        n_tab = int(round(alpha * total_candidates))
+        n_tab = round(alpha * total_candidates)
         n_gmm = total_candidates - n_tab
-        
+
         parts = []
         if n_tab > 0:
             parts.append(tabddpm_pool.slice(0, n_tab))
         if n_gmm > 0:
             parts.append(gmm_pool.slice(0, n_gmm))
-            
+
         combined = pl.concat(parts, how="vertical")
         probs = boundary_filter.predict_anomaly_prob(combined.to_pandas())
         survivors_mask = probs <= tau_reject
         filtered = combined.filter(pl.Series("survived", survivors_mask))
         cleaned = enforce_domain_invariants(filtered, dataset_name, precision)
-        
+
         eval_metrics = evaluate_synthetic_utility(
             synthetic_df=cleaned,
             validation_df=df_val,
@@ -374,7 +378,7 @@ cells.append(
         s_val = float(eval_metrics["S_val"])
         auprc_ecod = float(eval_metrics["AUPRC_ECOD"])
         auprc_iforest = float(eval_metrics["AUPRC_IForest_mean"])
-        
+
         sweep_results.append({
             "Dataset": dataset_name.upper(),
             "Configuration": label,
@@ -461,11 +465,11 @@ for idx, (res_df, title) in enumerate([(nsl_results, "NSL-KDD"), (unsw_results, 
     labels = [c.split("(")[0].strip() for c in res_df["Configuration"]]
     x = np.arange(len(labels))
     width = 0.25
-    
+
     ax.bar(x - width, res_df["S_val"], width, label="Composite S_val", color="#1f77b4")
     ax.bar(x, res_df["AUPRC (ECOD)"], width, label="ECOD", color="#2ca02c", alpha=0.8)
     ax.bar(x + width, res_df["AUPRC (IForest)"], width, label="IForest", color="#ff7f0e", alpha=0.8)
-    
+
     ax.set_title(f"{title}: Performance Across Mixture Ratios", fontsize=11, fontweight="bold")
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=25, ha="right", fontsize=9)

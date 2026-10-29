@@ -22,7 +22,8 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.export_competition_submissions import export_competition_submission
 
 
-def main():
+def main() -> None:
+    r"""Parse command-line arguments and reproduce competition submissions."""
     parser = argparse.ArgumentParser(
         description="Reproduce CS5344 final competition submissions from trained TabDDPM + Grouped GMM V2 models."
     )
@@ -48,7 +49,9 @@ def main():
 
     print("=" * 75)
     print("CS5344: Tabular Data Augmentation for Anomaly Detection")
-    print("Master Reproducibility Pipeline (Direct Model Generation: 65% TabDDPM + 35% Grouped GMM V2)")
+    print(
+        "Master Reproducibility Pipeline (Direct Model Generation: 65% TabDDPM + 35% Grouped GMM V2)"
+    )
     print("=" * 75)
 
     if args.dataset in ["all", "nsl_kdd"]:

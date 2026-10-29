@@ -58,30 +58,24 @@ def test_submission_row_count_and_columns(dataset_key: str) -> None:
     config: DatasetConfig = meta["config"]
 
     # 1. Exact row count
-    assert (
-        df.height == expected_n
-    ), f"{dataset_key}: Expected {expected_n} rows, found {df.height}"
+    assert df.height == expected_n, f"{dataset_key}: Expected {expected_n} rows, found {df.height}"
 
     # 2. First column must be 'id'
-    assert (
-        df.columns[0] == "id"
-    ), f"{dataset_key}: First column must be 'id', found {df.columns[0]}"
+    assert df.columns[0] == "id", f"{dataset_key}: First column must be 'id', found {df.columns[0]}"
     ids = df["id"].to_list()
-    assert ids == list(
-        range(expected_n)
-    ), f"{dataset_key}: 'id' column is not contiguous range(0, {expected_n})"
+    assert ids == list(range(expected_n)), (
+        f"{dataset_key}: 'id' column is not contiguous range(0, {expected_n})"
+    )
 
     # 3. Label column must not be present
-    assert (
-        "is_anomaly" not in df.columns
-    ), f"{dataset_key}: Found forbidden 'is_anomaly' column!"
+    assert "is_anomaly" not in df.columns, f"{dataset_key}: Found forbidden 'is_anomaly' column!"
 
     # 4. Feature columns must match dataset specification
     expected_features = set(config.features)
     actual_features = set(df.columns[1:])
-    assert (
-        actual_features == expected_features
-    ), f"{dataset_key}: Features do not match specification! Diff: {actual_features ^ expected_features}"
+    assert actual_features == expected_features, (
+        f"{dataset_key}: Features do not match specification! Diff: {actual_features ^ expected_features}"
+    )
 
 
 @pytest.mark.parametrize("dataset_key", ["nsl_kdd", "unsw_nb15"])
@@ -92,9 +86,7 @@ def test_submission_null_integrity(dataset_key: str) -> None:
     df = pl.read_csv(csv_path)
 
     total_nulls = df.null_count().sum_horizontal().item()
-    assert (
-        total_nulls == 0
-    ), f"{dataset_key}: Detected {total_nulls} null values in submission!"
+    assert total_nulls == 0, f"{dataset_key}: Detected {total_nulls} null values in submission!"
 
 
 def test_unsw_domain_invariants() -> None:
@@ -108,17 +100,17 @@ def test_unsw_domain_invariants() -> None:
     for field in ["swin", "stcpb", "dtcpb", "dwin"]:
         if field in non_tcp_df.columns:
             non_zero_count = non_tcp_df.filter(pl.col(field) != 0).height
-            assert (
-                non_zero_count == 0
-            ), f"Found {non_zero_count} non-zero values for {field} in non-TCP flows!"
+            assert non_zero_count == 0, (
+                f"Found {non_zero_count} non-zero values for {field} in non-TCP flows!"
+            )
 
     # 2. synack + ackdat <= 3.5 seconds
     if all(c in df.columns for c in ["synack", "ackdat"]):
         timing_sum = df["synack"] + df["ackdat"]
         violations = (timing_sum > 3.5001).sum()
-        assert (
-            violations == 0
-        ), f"Found {violations} flows where synack + ackdat exceeds 3.5s bound!"
+        assert violations == 0, (
+            f"Found {violations} flows where synack + ackdat exceeds 3.5s bound!"
+        )
 
 
 @pytest.mark.parametrize("dataset_key", ["nsl_kdd", "unsw_nb15"])
