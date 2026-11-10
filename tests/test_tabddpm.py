@@ -7,6 +7,8 @@ end-to-end decoding with TabularDecoder.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import polars as pl
 import pytest
@@ -247,7 +249,14 @@ class TestTabDDPMDecoderIntegration:
 
     def test_nsl_kdd_end_to_end_decoding(self) -> None:
         r"""Verify end-to-end TabDDPM sampling and restoration to raw unscaled NSL-KDD DataFrame."""
-        data = np.load("output/nsl_kdd/model_inputs/tabddpm_inputs.npz")
+        input_path = Path("output/nsl_kdd/model_inputs/tabddpm_inputs.npz")
+        if not input_path.exists():
+            from utils.dataset_configs import NSL_KDD
+            from utils.preprocessing import run_preprocessing
+
+            run_preprocessing("data/NSL-KDD/train.csv", NSL_KDD, output_root="output", seed=42)
+
+        data = np.load(input_path)
         cardinalities = data["categorical_cardinalities"].tolist()
         d_num = data["X_num"].shape[1]
 

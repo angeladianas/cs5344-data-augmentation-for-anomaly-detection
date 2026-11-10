@@ -35,7 +35,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from models.ensemble import fit_and_sample_gmm, sample_tabddpm_candidates
+from models.ensemble import (
+    ensure_preprocessed_inputs,
+    fit_and_sample_gmm,
+    sample_tabddpm_candidates,
+)
 from utils.dataset_configs import NSL_KDD, UNSW_NB15
 from utils.decoding import TabularDecoder
 from utils.domain_rules import enforce_domain_invariants, infer_source_decimal_precision
@@ -62,7 +66,7 @@ def generate_unfiltered_submissions(
     print(f"Target Rows: {target_n:,} | Seed: {seed}")
     print(f"{'=' * 80}\n")
 
-    input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
+    input_dir = ensure_preprocessed_inputs(dataset_name, seed=seed)
     decoder = TabularDecoder.from_directory(input_dir)
     config = NSL_KDD if dataset_name == "nsl_kdd" else UNSW_NB15
     train_csv = (

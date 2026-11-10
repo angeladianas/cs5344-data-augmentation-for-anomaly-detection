@@ -48,6 +48,23 @@ from utils.domain_rules import enforce_domain_invariants, infer_source_decimal_p
 device = resolve_device("auto")
 
 
+def ensure_preprocessed_inputs(dataset_name: str, seed: int = 42) -> Path:
+    r"""Ensure preprocessed model inputs exist for dataset, running preprocessing if needed."""
+    input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
+    if not (input_dir / "metadata.json").exists():
+        print(f"Preprocessed inputs not found at {input_dir}. Running preprocessing...")
+        from utils.preprocessing import run_preprocessing
+
+        config, folder = (
+            (NSL_KDD, "NSL-KDD") if dataset_name == "nsl_kdd" else (UNSW_NB15, "UNSW-NB15")
+        )
+        csv_path = REPO_ROOT / f"data/{folder}/train.csv"
+        if not csv_path.exists():
+            raise FileNotFoundError(f"Raw training data not found at {csv_path}")
+        run_preprocessing(csv_path, config, output_root=REPO_ROOT / "output", seed=seed)
+    return input_dir
+
+
 def load_tabddpm_sampler(
     dataset_name: str, compute_device: torch.device = device
 ) -> TabDDPMSampler:
@@ -117,15 +134,15 @@ def fit_and_sample_gmm(
     if n_samples <= 0:
         return pl.DataFrame()
 
-    input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
+    input_dir = ensure_preprocessed_inputs(dataset_name, seed=seed)
     numerical_df = pd.read_csv(input_dir / "gmm_inputs.csv")
     donors = pl.read_parquet(input_dir / "gmm_donors.parquet")
 
     protocol_column = "protocol_type" if dataset_name == "nsl_kdd" else "proto"
     group_masks = generation_group_masks(
-        donors[protocol_column].to_pandas(),
         dataset=dataset_name,
         generation_version=gmm_version,
+        protocols=donors[protocol_column].to_list(),
     )
     group_sample_counts = allocate_group_sample_counts(group_masks, n_samples)
 
@@ -151,9 +168,9 @@ def fit_and_sample_gmm(
 
         sampled_X, sampled_components = best_model.sample(count)
         group_donors = sample_component_conditional_donors(
-            donors=donors.filter(pl.Series(group_mask)),
+            component_ids=sampled_components,
             responsibilities=responsibilities,
-            sampled_components=sampled_components,
+            donors=donors.filter(pl.Series(group_mask)),
             random_state=seed,
         )
 
@@ -204,7 +221,7 @@ def export_competition_submission(
     )
     print(f"{'=' * 75}\n")
 
-    input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
+    input_dir = ensure_preprocessed_inputs(dataset_name, seed=seed)
     decoder = TabularDecoder.from_directory(input_dir)
     config = NSL_KDD if dataset_name == "nsl_kdd" else UNSW_NB15
     train_csv = (

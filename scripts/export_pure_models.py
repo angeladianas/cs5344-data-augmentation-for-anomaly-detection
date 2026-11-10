@@ -26,7 +26,11 @@ if str(REPO_ROOT) not in sys.path:
 import numpy as np
 import polars as pl
 
-from models.ensemble import fit_and_sample_gmm, sample_tabddpm_candidates
+from models.ensemble import (
+    ensure_preprocessed_inputs,
+    fit_and_sample_gmm,
+    sample_tabddpm_candidates,
+)
 from utils.boundary_filter import LightGBMBoundaryFilter
 from utils.dataset_configs import NSL_KDD, UNSW_NB15
 from utils.decoding import TabularDecoder
@@ -77,7 +81,7 @@ def build_and_export_pure_model(
     )
     print(f"{'=' * 75}\n")
 
-    input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
+    input_dir = ensure_preprocessed_inputs(dataset_name, seed=seed)
     decoder = TabularDecoder.from_directory(input_dir)
     config = NSL_KDD if dataset_name == "nsl_kdd" else UNSW_NB15
     train_csv = (
