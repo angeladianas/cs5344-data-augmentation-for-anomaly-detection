@@ -126,21 +126,31 @@ cs5344-data-augmentation-for-anomaly-detection/
 
 ## 5. Environment Setup & Dependency Management
 
-The project uses [`uv`](https://github.com/astral-sh/uv) inside Python $\ge 3.10$ for deterministic, lockfile-pinned environment management.
+The project uses [`uv`](https://github.com/astral-sh/uv) inside Python $\ge 3.10$ for deterministic, lockfile-pinned environment management across macOS, Linux, and Windows.
 
-### Installation
+### Option A: Using `uv` (Recommended — 100% Deterministic & Fast)
 ```bash
-# 1. Clone repository
-git clone https://github.com/angeladianas/cs5344-data-augmentation-for-anomaly-detection.git
-cd cs5344-data-augmentation-for-anomaly-detection
-
-# 2. Sync virtual environment from lockfile
+# 1. Sync virtual environment from lockfile
 uv sync
+
+# 2. Run master reproduction pipeline
+uv run python run_pipeline.py
+
+# 3. Run full test suite (66 tests)
+uv run pytest
 ```
 
-To activate the virtual environment:
+### Option B: Using standard `pip`
 ```bash
-source .venv/bin/activate
+# 1. Create and activate a virtual environment (Python >= 3.10)
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# 2. Install dependencies (on macOS, ensure `brew install libomp` is installed for LightGBM OpenMP support)
+pip install -r requirements.txt
+
+# 3. Run master reproduction pipeline
+python run_pipeline.py
 ```
 
 ---
