@@ -26,15 +26,11 @@ if str(REPO_ROOT) not in sys.path:
 import numpy as np
 import polars as pl
 
-from models.gmm_candidates import infer_source_decimal_precision
-from scripts.export_competition_submissions import (
-    enforce_domain_invariants,
-    fit_and_sample_gmm,
-    sample_tabddpm_candidates,
-)
+from models.ensemble import fit_and_sample_gmm, sample_tabddpm_candidates
 from utils.boundary_filter import LightGBMBoundaryFilter
 from utils.dataset_configs import NSL_KDD, UNSW_NB15
 from utils.decoding import TabularDecoder
+from utils.domain_rules import enforce_domain_invariants, infer_source_decimal_precision
 from utils.evaluator import evaluate_synthetic_utility
 
 DATASET_CONFIGS = {
@@ -54,25 +50,39 @@ DATASET_CONFIGS = {
 
 
 def build_and_export_pure_model(
-    model_type: str,  # 'gmm' or 'tabddpm'
+    model_type: str,
     dataset_name: str,
     seed: int = 42,
-) -> tuple[Path, dict]:
+) -> tuple[Path, dict[str, object]]:
+    r"""Generate, filter, validate, and export pure GMM or pure TabDDPM candidates.
+
+    Args:
+        model_type: Generator type ('gmm' or 'tabddpm').
+        dataset_name: Target dataset ('nsl_kdd' or 'unsw_nb15').
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Tuple of exported submission file path and summary metrics dictionary.
+    """
     cfg = DATASET_CONFIGS[dataset_name]
-    target_n = cfg["N"]
-    tau_reject = cfg["tau_reject"]
-    pool_size = cfg["gmm_pool"] if model_type == "gmm" else cfg["tab_pool"]
+    target_n = int(cfg["N"])
+    tau_reject = float(cfg["tau_reject"])
+    pool_size = int(cfg["gmm_pool"]) if model_type == "gmm" else int(cfg["tab_pool"])
 
     model_display = "Protocol-Grouped GMM V2" if model_type == "gmm" else "Deep TabDDPM"
     print(f"\n{'=' * 75}")
     print(f"GENERATING PURE SUBMISSION: {dataset_name.upper()} | Model: {model_display}")
-    print(f"Target Rows: {target_n:,} | Candidate Pool: {pool_size:,} | Boundary Filter tau <= {tau_reject}")
+    print(
+        f"Target Rows: {target_n:,} | Candidate Pool: {pool_size:,} | Boundary Filter tau <= {tau_reject}"
+    )
     print(f"{'=' * 75}\n")
 
     input_dir = REPO_ROOT / f"output/{dataset_name}/model_inputs"
     decoder = TabularDecoder.from_directory(input_dir)
     config = NSL_KDD if dataset_name == "nsl_kdd" else UNSW_NB15
-    train_csv = REPO_ROOT / f"data/{'NSL-KDD' if dataset_name == 'nsl_kdd' else 'UNSW-NB15'}/train.csv"
+    train_csv = (
+        REPO_ROOT / f"data/{'NSL-KDD' if dataset_name == 'nsl_kdd' else 'UNSW-NB15'}/train.csv"
+    )
 
     # 1. Load trained LightGBM boundary filter
     filter_path = REPO_ROOT / f"results/models/boundary_filter_{dataset_name}.pkl"
@@ -105,20 +115,26 @@ def build_and_export_pure_model(
     mask = probs <= tau_reject
     survivors = raw_candidates.filter(pl.Series("s", mask))
     survivors_p = probs[mask]
-    print(f"Survivors (tau <= {tau_reject}): {survivors.height:,} / {raw_candidates.height:,} ({mask.mean()*100:.2f}%)")
+    print(
+        f"Survivors (tau <= {tau_reject}): {survivors.height:,} / {raw_candidates.height:,} ({mask.mean() * 100:.2f}%)"
+    )
 
     if dataset_name == "nsl_kdd":
         if survivors.height >= target_n:
             selected = survivors.sample(n=target_n, seed=seed)
         else:
-            print(f"[WARN] Only {survivors.height:,} survivors < {target_n:,}. Selecting top {target_n:,} by lowest anomaly prob.")
+            print(
+                f"[WARN] Only {survivors.height:,} survivors < {target_n:,}. Selecting top {target_n:,} by lowest anomaly prob."
+            )
             selected = raw_candidates[np.argsort(probs)[:target_n]]
     else:
         # UNSW-NB15: cleanest-rank selection
         if survivors.height >= target_n:
             selected = survivors[np.argsort(survivors_p)[:target_n]]
         else:
-            print(f"[WARN] Only {survivors.height:,} survivors < {target_n:,}. Selecting top {target_n:,} by lowest anomaly prob.")
+            print(
+                f"[WARN] Only {survivors.height:,} survivors < {target_n:,}. Selecting top {target_n:,} by lowest anomaly prob."
+            )
             selected = raw_candidates[np.argsort(probs)[:target_n]]
 
     # 4. Enforce domain invariants and decimal precision
@@ -136,7 +152,9 @@ def build_and_export_pure_model(
     assert submission.height == target_n, f"Expected {target_n} rows, got {submission.height}"
     assert "is_anomaly" not in submission.columns, "Found is_anomaly in submission!"
     assert submission.columns[0] == "id", "First column is not 'id'!"
-    assert submission.null_count().sum_horizontal().sum() == 0, "Null values detected in submission!"
+    assert submission.null_count().sum_horizontal().sum() == 0, (
+        "Null values detected in submission!"
+    )
 
     # 6. Save submission CSV to results/ablation_benchmarks
     out_dir = REPO_ROOT / "results" / "ablation_benchmarks"
@@ -156,9 +174,12 @@ def build_and_export_pure_model(
         categorical_cols=cat_cols,
         n_jobs=1,
     )
-    print(f"  -> S_val: {metrics['S_val']:.5f} | ECOD: {metrics['AUPRC_ECOD']:.5f} | IForest: {metrics['AUPRC_IForest_mean']:.5f} ({time.time()-t0:.1f}s total)")
+    print(
+        f"  -> S_val: {metrics['S_val']:.5f} | ECOD: {metrics['AUPRC_ECOD']:.5f} | "
+        f"IForest: {metrics['AUPRC_IForest_mean']:.5f} ({time.time() - t0:.1f}s total)"
+    )
 
-    summary = {
+    summary: dict[str, object] = {
         "model_type": model_type,
         "dataset": dataset_name,
         "submission_file": str(out_csv),
@@ -172,8 +193,11 @@ def build_and_export_pure_model(
     return out_csv, summary
 
 
-def main():
-    parser = argparse.ArgumentParser()
+def main() -> None:
+    r"""Parse command line arguments and execute pure model export and benchmarking."""
+    parser = argparse.ArgumentParser(
+        description="Export pure GMM or pure TabDDPM submission benchmarks."
+    )
     parser.add_argument("--model", choices=["all", "gmm", "tabddpm"], default="all")
     parser.add_argument("--dataset", choices=["all", "nsl_kdd", "unsw_nb15"], default="all")
     args = parser.parse_args()
@@ -191,7 +215,10 @@ def main():
     print("ALL REQUESTED PURE MODEL SUBMISSIONS GENERATED SUCCESSFULLY:")
     print("=" * 80)
     for r in results:
-        print(f"Dataset: {r['dataset'].upper():<10} | Model: {r['model_type'].upper():<8} | S_val: {r['S_val']:.5f} (ECOD: {r['AUPRC_ECOD']:.5f}, IF: {r['AUPRC_IForest']:.5f}) -> {r['submission_file']}")
+        print(
+            f"Dataset: {str(r['dataset']).upper():<10} | Model: {str(r['model_type']).upper():<8} | "
+            f"S_val: {float(r['S_val']):.5f} (ECOD: {float(r['AUPRC_ECOD']):.5f}, IF: {float(r['AUPRC_IForest']):.5f}) -> {r['submission_file']}"
+        )
 
 
 if __name__ == "__main__":
