@@ -6,6 +6,7 @@ noise and uniform categorical states from timestep T-1 down to 0.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
@@ -110,8 +111,12 @@ class TabDDPMSampler:
         collected_num: list[np.ndarray] = []
         collected_cat: list[np.ndarray] = []
         remaining = num_samples
+        batch_idx = 0
+        total_batches = (num_samples + batch_size - 1) // batch_size
+        t_start = time.time()
 
         while remaining > 0:
+            batch_idx += 1
             curr_b = min(remaining, batch_size)
 
             # 1. Initialize continuous features from pure standard normal prior N(0, I)
@@ -156,6 +161,11 @@ class TabDDPMSampler:
                 collected_cat.append(x_t_cat.detach().cpu().numpy().astype(np.int64))
 
             remaining -= curr_b
+            sampled_so_far = num_samples - remaining
+            print(
+                f"    [TabDDPM Batch {batch_idx}/{total_batches}] Sampled {sampled_so_far:,} / {num_samples:,} rows ({time.time() - t_start:.1f}s elapsed)...",
+                flush=True,
+            )
 
         final_num = (
             np.concatenate(collected_num, axis=0)
